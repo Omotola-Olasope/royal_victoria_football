@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#C9D2D6">
+<meta name="robots" content="noindex">
+<title>Coordinator · sets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo+Narrow:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#C9D2D6;--stub:#EEEFE8;--stub-2:#E4E6DD;--ink:#131C24;--ink-soft:#5C6B75;
+  --rule:#A9B6BD;--stamp:#9E2B21;--stamp-ok:#1E5B3B;--shadow:rgba(19,28,36,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  min-height:100dvh;font-family:'Archivo Narrow',sans-serif;color:var(--ink);
+  background:repeating-linear-gradient(0deg,rgba(19,28,36,.035) 0 1px,transparent 1px 4px),var(--paper);
+  padding:20px 14px calc(34px + env(safe-area-inset-bottom));display:flex;justify-content:center;
+}
+.docket{width:100%;max-width:472px}
+.mast{border:1.5px solid var(--ink);background:var(--stub);box-shadow:4px 4px 0 var(--shadow);padding:13px 18px}
+.eyebrow{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);display:flex;justify-content:space-between}
+.title{font-family:'Archivo Black',sans-serif;font-size:29px;line-height:.95;letter-spacing:-.022em;text-transform:uppercase;margin:8px 0 0}
+.tear{height:20px;position:relative}
+.tear::before{content:'';position:absolute;left:0;right:0;top:9px;border-top:1.5px dashed var(--ink);opacity:.55}
+.stub{border:1.5px solid var(--ink);background:var(--stub);box-shadow:4px 4px 0 var(--shadow);padding:14px 18px 16px}
+.stub+.stub{margin-top:14px}
+.stub-head{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);padding-bottom:10px;margin-bottom:12px;border-bottom:1.5px solid var(--ink)}
+.field{width:100%;font-family:'Archivo Narrow',sans-serif;font-size:19px;font-weight:600;padding:15px 14px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);margin-bottom:11px}
+.field::placeholder{color:#93A1A9;font-weight:400}
+.field:focus-visible{outline:3px solid var(--stamp);outline-offset:2px}
+.btn{width:100%;min-height:60px;cursor:pointer;font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:.055em;text-transform:uppercase;color:var(--stub);background:var(--ink);border:1.5px solid var(--ink);box-shadow:4px 4px 0 var(--shadow);transition:transform .09s ease,box-shadow .09s ease}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0}
+.btn:focus-visible{outline:3px solid var(--stamp);outline-offset:3px}
+.btn[disabled]{opacity:.45}
+.row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:0}
+.who{font-size:17px;font-weight:600}
+.tap{font-family:'Archivo Black',sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:11px 14px;min-height:44px;background:var(--ink);color:var(--stub);border:1.5px solid var(--ink);cursor:pointer}
+.tap:active{transform:translate(2px,2px)}
+.done{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--stamp-ok);text-align:right;line-height:1.3}
+.done b{display:block;font-weight:700}
+.flash{border:1.5px solid var(--stamp);background:rgba(158,43,33,.09);color:var(--stamp);padding:11px 13px;font-size:15px;font-weight:600;margin-bottom:12px;line-height:1.35}
+.good{border-color:var(--stamp-ok);background:rgba(30,91,59,.09);color:var(--stamp-ok)}
+.hint{font-size:14.5px;color:var(--ink-soft);line-height:1.35;margin-top:10px}
+.empty{font-size:15px;color:var(--ink-soft);padding:6px 0}
+.hidden{display:none}
+.count{font-family:'Space Mono',monospace;font-size:26px;font-weight:700}
+</style>
+</head>
+<body>
+<main class="docket">
+
+  <header class="mast">
+    <div class="eyebrow"><span>Coordinator only</span><span id="date">—</span></div>
+    <h1 class="title">Record a player</h1>
+  </header>
+
+  <div class="tear"></div>
+
+  <section class="stub" id="gate">
+    <div class="stub-head"><span>Coordinator key</span><span></span></div>
+    <div id="gateMsg"></div>
+    <input class="field" id="keyInput" placeholder="Paste your key" autocomplete="off">
+    <button class="btn" id="btnKey">Unlock</button>
+    <p class="hint">Run showCoordinatorKey() in the Apps Script editor if you have lost it. Do not post this page in the group.</p>
+  </section>
+
+  <section class="stub hidden" id="addCard">
+    <div class="stub-head"><span>Anybody not on the list</span><span id="cnt">0 in</span></div>
+    <div id="msg"></div>
+    <input class="field" id="nameInput" placeholder="Name" autocomplete="off" enterkeyhint="done">
+    <button class="btn" id="btnAdd">Record arrival now</button>
+    <p class="hint">Use this for a man with no phone, a dead battery, somebody not in the group, or anyone who has just walked over. It stamps the time you tap it.</p>
+  </section>
+
+  <section class="stub hidden" id="rosterCard">
+    <div class="stub-head"><span>Already registered</span><span>tap to record</span></div>
+    <div id="roster"></div>
+  </section>
+</main>
+
+<script>
+/* Same Apps Script /exec URL as index.html. */
+const API_URL = 'https://script.google.com/macros/s/AKfycbzA-ckrDg5ovx7czN9EPnfouqXSzy7VhgKX4YEZy4KU8mZA55G43hrHuj7a6WnTOWfu/exec';
+
+const store = (() => {
+  const mem = {}; let ok = true;
+  try { localStorage.setItem('__t','1'); localStorage.removeItem('__t'); } catch(e){ ok = false; }
+  return {
+    get: k => { try { return ok ? localStorage.getItem(k) : mem[k]||null; } catch(e){ return mem[k]||null; } },
+    set: (k,v) => { try { ok ? localStorage.setItem(k,v) : (mem[k]=v); } catch(e){ mem[k]=v; } }
+  };
+})();
+
+let key = store.get('sets.key') || '';
+let busy = false, draft = '';
+
+async function admin(op, extra) {
+  if (API_URL.indexOf('PASTE_') === 0) throw new Error('API_URL is not set in coordinator.html');
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action: 'admin', admin_key: key, op }, extra || {})),
+    redirect: 'follow'
+  });
+  const data = await res.json();
+  if (data.ok === false) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function setHTML(node, html){ if (node.__last !== html) { node.__last = html; node.innerHTML = html; } }
+function note(id, text, good){ el(id).innerHTML = text ? `<div class="flash ${good?'good':''}">${esc(text)}</div>` : ''; }
+
+async function unlock() {
+  key = (el('keyInput').value || '').trim();
+  if (!key) return note('gateMsg','Paste the key first.');
+  busy = true; el('btnKey').disabled = true;
+  try {
+    await load();
+    store.set('sets.key', key);
+    el('gate').classList.add('hidden');
+    el('addCard').classList.remove('hidden');
+    el('rosterCard').classList.remove('hidden');
+  } catch (e) {
+    note('gateMsg', e.message);
+  } finally { busy = false; el('btnKey').disabled = false; }
+}
+
+async function load() {
+  const data = await admin('roster');
+  el('date').textContent = data.session_date;
+  el('cnt').textContent = data.checked_in + ' in';
+  if (!data.is_session_day) {
+    setHTML(el('roster'), '<p class="empty">No session today. Recording is closed.</p>');
+    return data;
+  }
+  setHTML(el('roster'), data.players.length
+    ? data.players.map(p => p.checked_in
+        ? `<div class="row"><span class="who">${esc(p.name)}</span>
+             <span class="done"><b>${p.time}</b>${p.method === 'coordinator' ? 'by you' : 'self'}</span></div>`
+        : `<div class="row"><span class="who">${esc(p.name)}</span>
+             <button class="tap" data-name="${esc(p.name)}">Record</button></div>`).join('')
+    : '<p class="empty">Nobody has registered yet.</p>');
+  return data;
+}
+
+async function record(name) {
+  if (busy) return;
+  busy = true; note('msg','');
+  try {
+    const data = await admin('checkin_for', { name });
+    note('msg', data.message, true);
+    draft = ''; el('nameInput').value = '';
+    await load();
+  } catch (e) {
+    note('msg', e.message);
+  } finally { busy = false; }
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.id === 'btnKey') unlock();
+  if (b.id === 'btnAdd') {
+    const n = (el('nameInput').value || draft || '').trim();
+    if (n.length < 2) return note('msg','Enter a name.');
+    record(n);
+  }
+  if (b.dataset && b.dataset.name) record(b.dataset.name);
+});
+document.addEventListener('input', e => { if (e.target.id === 'nameInput') draft = e.target.value; });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (e.target.id === 'keyInput') { e.preventDefault(); unlock(); }
+  if (e.target.id === 'nameInput') { e.preventDefault(); el('btnAdd').click(); }
+});
+setInterval(() => {
+  if (document.hidden || busy || !key) return;
+  if (document.activeElement && document.activeElement.id === 'nameInput') return;
+  load().catch(() => {});
+}, 12000);
+
+if (key) { el('keyInput').value = key; unlock(); }
+</script>
+</body>
+</html>
