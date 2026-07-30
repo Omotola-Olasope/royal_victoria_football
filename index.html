@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#C9D2D6">
+<title>Sets · pitch check-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo+Narrow:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SETS — the arrival record
+   Direction: a carbon-copy duplicate form. The product's promise is that the
+   record is public and checkable, so the interface is built as the record:
+   stamped stubs, perforated tears, timestamps set in typewriter mono.
+   ============================================================ */
+
+:root{
+  --paper:#C9D2D6;        /* cold duplicate-copy stock */
+  --stub:#EEEFE8;         /* form stock */
+  --stub-2:#E4E6DD;
+  --ink:#131C24;
+  --ink-soft:#5C6B75;
+  --rule:#A9B6BD;
+  --stamp:#9E2B21;        /* oxblood */
+  --stamp-ok:#1E5B3B;
+  --shadow:rgba(19,28,36,.18);
+  --gut:18px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+html{-webkit-text-size-adjust:100%}
+
+body{
+  min-height:100dvh;
+  font-family:'Archivo Narrow',sans-serif;
+  color:var(--ink);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 40%),
+    repeating-linear-gradient(0deg,rgba(19,28,36,.035) 0 1px,transparent 1px 4px),
+    var(--paper);
+  padding:22px 14px calc(34px + env(safe-area-inset-bottom));
+  display:flex;justify-content:center;
+}
+
+.docket{width:100%;max-width:472px}
+
+/* --- reveal on load ------------------------------------------------------ */
+.rise{opacity:0;transform:translateY(10px);animation:rise .5s cubic-bezier(.2,.7,.3,1) forwards}
+.rise:nth-child(1){animation-delay:.02s}
+.rise:nth-child(2){animation-delay:.09s}
+.rise:nth-child(3){animation-delay:.16s}
+.rise:nth-child(4){animation-delay:.23s}
+.rise:nth-child(5){animation-delay:.30s}
+@keyframes rise{to{opacity:1;transform:none}}
+
+/* --- masthead ----------------------------------------------------------- */
+.mast{
+  border:1.5px solid var(--ink);
+  background:var(--stub);
+  box-shadow:4px 4px 0 var(--shadow);
+  padding:14px var(--gut) 12px;
+}
+.eyebrow{
+  font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-soft);
+  display:flex;justify-content:space-between;gap:10px;
+}
+.pitch{
+  font-family:'Archivo Black',sans-serif;font-size:clamp(27px,8.6vw,36px);
+  line-height:.94;letter-spacing:-.022em;text-transform:uppercase;margin:9px 0 2px;
+}
+.mast-foot{
+  margin-top:12px;padding-top:10px;border-top:1.5px solid var(--ink);
+  display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+}
+.mast-foot .label{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+.mast-foot .val{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;line-height:1.1}
+.clock{font-family:'Space Mono',monospace;font-size:31px;font-weight:700;line-height:.9;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.clock.past{color:var(--stamp)}
+
+/* --- perforated tear ---------------------------------------------------- */
+.tear{height:20px;position:relative}
+.tear::before{
+  content:'';position:absolute;left:0;right:0;top:9px;
+  border-top:1.5px dashed var(--ink);opacity:.55;
+}
+
+/* --- stub cards --------------------------------------------------------- */
+.stub{
+  border:1.5px solid var(--ink);background:var(--stub);
+  box-shadow:4px 4px 0 var(--shadow);padding:14px var(--gut) 16px;
+}
+.stub + .stub{margin-top:14px}
+.stub-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-soft);
+  padding-bottom:10px;margin-bottom:12px;border-bottom:1.5px solid var(--ink);
+}
+.you-name{
+  font-family:'Archivo Black',sans-serif;font-size:22px;text-transform:uppercase;
+  letter-spacing:-.01em;line-height:1;
+}
+
+/* --- the signature: the stamp ------------------------------------------- */
+.stamp{
+  position:relative;margin:16px 0 6px;padding:11px 14px 12px;
+  border:2.5px solid var(--stamp);color:var(--stamp);
+  border-radius:3px;transform:rotate(-3.2deg);
+  display:inline-block;opacity:.9;
+  background:
+    repeating-linear-gradient(52deg,rgba(158,43,33,.05) 0 3px,transparent 3px 7px);
+  animation:thud .42s cubic-bezier(.2,1.5,.4,1) both;
+}
+.stamp.ok{border-color:var(--stamp-ok);color:var(--stamp-ok)}
+.stamp .word{
+  font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:.2em;
+  text-transform:uppercase;line-height:1;
+}
+.stamp .t{
+  font-family:'Space Mono',monospace;font-size:26px;font-weight:700;
+  line-height:1.05;margin-top:4px;font-variant-numeric:tabular-nums;
+}
+.stamp .sub{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;opacity:.85}
+@keyframes thud{
+  0%{opacity:0;transform:rotate(-11deg) scale(1.5)}
+  70%{opacity:.95;transform:rotate(-2.4deg) scale(.98)}
+  100%{opacity:.9;transform:rotate(-3.2deg) scale(1)}
+}
+
+/* --- big verdict -------------------------------------------------------- */
+.verdict{margin-top:14px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.verdict .big{
+  font-family:'Archivo Black',sans-serif;font-size:clamp(38px,13vw,54px);
+  line-height:.86;letter-spacing:-.03em;text-transform:uppercase;
+}
+.verdict .note{font-size:14.5px;color:var(--ink-soft);max-width:210px;line-height:1.28}
+
+/* --- controls ----------------------------------------------------------- */
+.field{
+  width:100%;font-family:'Archivo Narrow',sans-serif;font-size:19px;font-weight:600;
+  padding:15px 14px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);
+  margin-bottom:11px;
+}
+.field::placeholder{color:#93A1A9;font-weight:400}
+.field:focus-visible{outline:3px solid var(--stamp);outline-offset:2px}
+
+.btn{
+  width:100%;min-height:64px;cursor:pointer;
+  font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:.055em;
+  text-transform:uppercase;color:var(--stub);background:var(--ink);
+  border:1.5px solid var(--ink);box-shadow:4px 4px 0 var(--shadow);
+  transition:transform .09s ease,box-shadow .09s ease;
+}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--shadow)}
+.btn:focus-visible{outline:3px solid var(--stamp);outline-offset:3px}
+.btn[disabled]{opacity:.45;cursor:progress}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:none;min-height:46px;font-size:14px}
+.btn.danger{background:var(--stamp);border-color:var(--stamp);color:#fff}
+
+/* --- ledger ------------------------------------------------------------- */
+.ledger{list-style:none}
+.row{
+  display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:baseline;
+  padding:8px 0;border-bottom:1px solid var(--rule);
+}
+.row:last-child{border-bottom:0}
+.row .n{font-family:'Space Mono',monospace;font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.row .who{font-size:16.5px;font-weight:600;letter-spacing:.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .t{font-family:'Space Mono',monospace;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+.row.me{background:var(--stub-2);margin:0 -8px;padding-left:8px;padding-right:8px}
+.row.me .who::after{content:' ← you';font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.1em;color:var(--stamp)}
+.row.late .t::after{content:' late';color:var(--stamp);font-size:10px;letter-spacing:.08em}
+.row.gone .who{text-decoration:line-through;opacity:.5}
+
+/* --- teamsheets --------------------------------------------------------- */
+.sheet + .sheet{margin-top:14px;padding-top:13px;border-top:1.5px solid var(--ink)}
+.sheet-no{
+  font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:7px;
+}
+.sheet-no em{font-style:normal;color:var(--stamp)}
+
+/* --- footer ------------------------------------------------------------- */
+.foot{
+  margin-top:14px;font-family:'Space Mono',monospace;font-size:10.5px;line-height:1.65;
+  letter-spacing:.045em;color:var(--ink-soft);text-transform:uppercase;
+}
+.foot b{color:var(--ink)}
+.seed{word-break:break-all}
+
+.flash{
+  border:1.5px solid var(--stamp);background:rgba(158,43,33,.09);color:var(--stamp);
+  padding:11px 13px;font-size:15px;font-weight:600;line-height:1.35;margin-bottom:13px;
+}
+.hint{font-size:14.5px;color:var(--ink-soft);line-height:1.35;margin-top:11px}
+.empty{font-size:15px;color:var(--ink-soft);padding:6px 0}
+.hidden{display:none}
+
+@media (prefers-reduced-motion:reduce){
+  .rise,.stamp{animation:none;opacity:1;transform:none}
+  .stamp{transform:rotate(-3.2deg)}
+  .btn{transition:none}
+}
+</style>
+</head>
+<body>
+<main class="docket">
+
+  <!-- 1. masthead -->
+  <header class="mast rise">
+    <div class="eyebrow">
+      <span>Form 01 · arrival record</span>
+      <span id="date">—</span>
+    </div>
+    <h1 class="pitch" id="pitch">Loading</h1>
+    <div class="mast-foot">
+      <div>
+        <div class="label">Sets form at</div>
+        <div class="val" id="cutoff">--:--</div>
+      </div>
+      <div style="text-align:right">
+        <div class="label" id="clockLabel">Time left</div>
+        <div class="clock" id="clock">--:--</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tear"></div>
+
+  <!-- 2. your stub -->
+  <section class="stub rise" id="me">
+    <div class="stub-head"><span>Your stub</span><span id="meState">—</span></div>
+    <div id="meBody"><p class="empty">Checking the record…</p></div>
+  </section>
+
+  <!-- 3. arrivals -->
+  <section class="stub rise" id="arrivalsCard">
+    <div class="stub-head"><span>Arrivals</span><span id="arrivalsCount">0</span></div>
+    <ul class="ledger" id="arrivals"></ul>
+    <p class="hint">Arrival order decides whether you play. The draw decides who you play with.</p>
+  </section>
+
+  <!-- 4. sets -->
+  <section class="stub rise hidden" id="setsCard">
+    <div class="stub-head"><span>Sets on the pitch</span><span id="setsCount">0</span></div>
+    <div id="sets"></div>
+  </section>
+
+  <!-- 5. queue -->
+  <section class="stub rise hidden" id="queueCard">
+    <div class="stub-head"><span>Waiting</span><span id="queueCount">0</span></div>
+    <ul class="ledger" id="queue"></ul>
+  </section>
+
+  <footer class="foot">
+    <div id="seeds"></div>
+    <div style="margin-top:6px">Anyone can recompute today's draw from the seed and the arrival log.</div>
+  </footer>
+</main>
+
+<script>
+/* ============================================================
+   Paste the Apps Script web app /exec URL here after deploying.
+   ============================================================ */
+const API_URL = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE';
+
+/* --- storage that degrades instead of throwing ------------------------- */
+const store = (() => {
+  const mem = {};
+  let ok = true;
+  try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); } catch (e) { ok = false; }
+  return {
+    get: k => { try { return ok ? localStorage.getItem(k) : mem[k] || null; } catch (e) { return mem[k] || null; } },
+    set: (k, v) => { try { ok ? localStorage.setItem(k, v) : (mem[k] = v); } catch (e) { mem[k] = v; } }
+  };
+})();
+
+let deviceId = store.get('sets.device');
+if (!deviceId) {
+  deviceId = (crypto.randomUUID ? crypto.randomUUID()
+    : 'd' + Date.now() + Math.random().toString(16).slice(2));
+  store.set('sets.device', deviceId);
+}
+
+const params = new URLSearchParams(location.search);
+const presenceToken = { qr_token: params.get('t') || params.get('qr') || '', nfc_token: params.get('nfc') || '' };
+
+let state = null;
+let skew = 0;            /* server clock minus this phone's clock */
+let flash = '';
+let busy = false;
+
+/* --- api --------------------------------------------------------------- */
+async function api(payload) {
+  if (API_URL.indexOf('PASTE_') === 0) throw new Error('API_URL is not set in index.html');
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    /* text/plain keeps this a simple request. A JSON content type would trigger
+       a CORS preflight that Apps Script does not answer. */
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ device_id: deviceId }, payload)),
+    redirect: 'follow'
+  });
+  const data = await res.json();
+  if (data.ok === false && data.error) throw new Error(data.error);
+  return data;
+}
+
+async function refresh() {
+  try {
+    const data = await api({ action: 'state' });
+    apply(data);
+  } catch (e) {
+    flash = e.message;
+    render();
+  }
+}
+
+function apply(data) {
+  state = data.state && data.state.ok ? data.state : data;
+  skew = new Date(state.server_iso).getTime() - Date.now();
+  render();
+}
+
+/* --- actions ----------------------------------------------------------- */
+async function addName() {
+  const input = document.getElementById('nameInput');
+  const name = (input.value || '').trim();
+  if (name.length < 2) { flash = 'Enter the name your team knows you by.'; return render(); }
+  await run(() => api({ action: 'register', name }));
+  await refresh();
+}
+
+function position() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy_m: p.coords.accuracy }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  });
+}
+
+async function checkIn() {
+  await run(async () => {
+    let extra = Object.assign({}, presenceToken);
+    if (state.config.verification_mode === 'gps') {
+      const fix = await position();
+      if (!fix) throw new Error('Your phone did not share a location. Allow location for this site, then tap again.');
+      extra = Object.assign(extra, fix);
+    }
+    const data = await api(Object.assign({ action: 'checkin' }, extra));
+    if (data.state) apply(data.state);
+    return data;
+  });
+  await refresh();
+}
+
+async function leave() {
+  if (!confirm('Give up your place? Your slot goes to the front of the queue.')) return;
+  await run(() => api({ action: 'leave' }));
+  await refresh();
+}
+
+async function run(fn) {
+  if (busy) return;
+  busy = true; flash = ''; render();
+  try { await fn(); }
+  catch (e) { flash = e.message; }
+  finally { busy = false; render(); }
+}
+
+/* --- render ------------------------------------------------------------ */
+function el(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function render() {
+  if (!state) { if (flash) el('meBody').innerHTML = `<div class="flash">${esc(flash)}</div>`; return; }
+  const c = state.config, s = state.session, you = state.you;
+
+  el('pitch').textContent = c.pitch_name;
+  el('date').textContent = s.date;
+  el('cutoff').textContent = s.cutoff_local;
+  tick();
+
+  el('meState').textContent = ({
+    NOT_CHECKED_IN: 'not checked in', IN_SET: 'playing', IN_QUEUE: 'waiting'
+  })[you.status] || '—';
+  el('meBody').innerHTML = meBody(you, s, c);
+
+  const live = state.arrivals.filter(a => a.state !== 'left');
+  el('arrivalsCount').textContent = live.length + ' checked in';
+  el('arrivals').innerHTML = state.arrivals.length
+    ? state.arrivals.map(a => `
+      <li class="row ${a.name === you.name ? 'me' : ''} ${a.before_cutoff ? '' : 'late'} ${a.state === 'left' ? 'gone' : ''}">
+        <span class="n">${pad(a.n)}</span>
+        <span class="who">${esc(a.name)}</span>
+        <span class="t">${a.time}</span>
+      </li>`).join('')
+    : '<li class="empty">Nobody has tapped in yet. Be the first name on the sheet.</li>';
+
+  el('setsCard').classList.toggle('hidden', !state.sets.length);
+  el('setsCount').textContent = state.sets.length + ' of ' + c.max_sets;
+  el('sets').innerHTML = state.sets.map(set => `
+    <div class="sheet">
+      <div class="sheet-no">Set ${setLetter(set.set_no)}${set.players.some(p => p.name === you.name) ? ' <em>· yours</em>' : ''}</div>
+      <ul class="ledger">
+        ${set.players.map(p => `
+          <li class="row ${p.name === you.name ? 'me' : ''}">
+            <span class="n">${pad(p.slot)}</span>
+            <span class="who">${esc(p.name)}</span>
+            <span class="t"></span>
+          </li>`).join('')}
+      </ul>
+    </div>`).join('');
+
+  el('queueCard').classList.toggle('hidden', s.phase === 'OPEN' || !state.queue.length);
+  el('queueCount').textContent = state.queue.length;
+  el('queue').innerHTML = state.queue.map(q => `
+    <li class="row ${q.name === you.name ? 'me' : ''}">
+      <span class="n">${pad(q.pos)}</span>
+      <span class="who">${esc(q.name)}</span>
+      <span class="t">${q.time}</span>
+    </li>`).join('');
+
+  el('seeds').innerHTML = state.formations.length
+    ? state.formations.map(f => `<div class="seed"><b>${f.kind}</b> ${f.formed} · seed ${f.seed_hex}</div>`).join('')
+    : '<div>No draw yet</div>';
+}
+
+function setLetter(n) { return String.fromCharCode(64 + n); }
+
+function meBody(you, s, c) {
+  const warn = flash ? `<div class="flash">${esc(flash)}</div>` : '';
+
+  if (s.phase === 'NO_SESSION') {
+    return warn + `<p class="empty">No session today. Check-in opens on match day.</p>`;
+  }
+
+  if (!you.registered) {
+    return warn + `
+      <p class="hint" style="margin:0 0 12px">Put your name down once. This phone remembers it after that.</p>
+      <input class="field" id="nameInput" placeholder="Your name" autocomplete="name" enterkeyhint="done">
+      <button class="btn" id="btnName" ${busy ? 'disabled' : ''}>${busy ? 'Adding…' : 'Add my name'}</button>`;
+  }
+
+  const head = `<div class="you-name">${esc(you.name)}</div>`;
+
+  if (!you.checked_in) {
+    const how = ({
+      gps: 'Tap this at the pitch. Your phone confirms you are here.',
+      qr: 'Scan the code on the pitch display, then tap this.',
+      nfc: 'Tap your phone on the pitch tag, then tap this.',
+      none: 'Tap this when you get to the pitch.'
+    })[c.verification_mode];
+    return warn + head + `
+      <p class="hint">${how}</p>
+      <div style="margin-top:13px"></div>
+      <button class="btn" id="btnIn" ${busy ? 'disabled' : ''}>${busy ? 'Recording…' : 'Check me in'}</button>
+      <p class="hint">Nobody checks in for you. No tap, no place.</p>`;
+  }
+
+  const stamp = `
+    <div class="stamp ${you.before_cutoff ? 'ok' : ''}">
+      <div class="word">${you.before_cutoff ? 'On time' : 'After cutoff'}</div>
+      <div class="t">${you.arrived_local}</div>
+      <div class="sub">No ${pad(you.arrival_no)} to arrive</div>
+    </div>`;
+
+  if (you.status === 'IN_SET') {
+    return warn + head + stamp + `
+      <div class="verdict">
+        <span class="big">Set ${setLetter(you.set_no)}</span>
+        <span class="note">Slot ${you.slot}. Your set was drawn from the arrival log, not picked by anyone.</span>
+      </div>
+      <div style="margin-top:15px"></div>
+      <button class="btn ghost" id="btnLeave">Give up my place</button>`;
+  }
+
+  if (you.status === 'IN_QUEUE') {
+    const ahead = you.queue_position - 1;
+    const note = s.phase === 'OPEN'
+      ? `Sets are drawn at ${s.cutoff_local}. Everyone here before then is in the draw.`
+      : ahead === 0
+        ? 'You are next. The first slot that opens is yours.'
+        : `${ahead} ${ahead === 1 ? 'person is' : 'people are'} ahead of you. Slots pass down the list in arrival order.`;
+    return warn + head + stamp + `
+      <div class="verdict">
+        <span class="big">${s.phase === 'OPEN' ? 'In the draw' : 'No ' + you.queue_position}</span>
+        <span class="note">${note}</span>
+      </div>`;
+  }
+
+  return warn + head + stamp;
+}
+
+/* --- countdown -------------------------------------------------------- */
+function tick() {
+  if (!state) return;
+  const left = Math.round((new Date(state.session.cutoff_iso).getTime() - (Date.now() + skew)) / 1000);
+  const clock = el('clock'), label = el('clockLabel');
+  if (left > 0) {
+    label.textContent = 'Draw in';
+    clock.classList.remove('past');
+    const h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60), sec = left % 60;
+    clock.textContent = h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+  } else {
+    label.textContent = 'Draw closed';
+    clock.classList.add('past');
+    clock.textContent = state.session.phase === 'SHORT' ? 'short' : 'done';
+  }
+}
+
+/* --- events ----------------------------------------------------------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  if (t.id === 'btnName') addName();
+  if (t.id === 'btnIn') checkIn();
+  if (t.id === 'btnLeave') leave();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'nameInput') { e.preventDefault(); addName(); }
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+
+setInterval(tick, 1000);
+setInterval(() => { if (!document.hidden && !busy) refresh(); }, 8000);
+refresh();
+</script>
+</body>
+</html>
