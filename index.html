@@ -423,10 +423,10 @@ function render() {
     : '<li class="empty">Nobody has tapped in yet. Be the first name on the sheet.</li>');
 
   el('setsCard').classList.toggle('hidden', off || !state.sets.length);
-  el('setsCount').textContent = state.sets.length + ' of ' + c.max_sets;
+  el('setsCount').textContent = state.sets.length + ' sets';
   setHTML(el('sets'), state.sets.map(set => `
     <div class="sheet">
-      <div class="sheet-no">Set ${setLetter(set.set_no)}${set.players.some(p => p.name === you.name) ? ' <em>· yours</em>' : ''}</div>
+      <div class="sheet-no">Set ${setLetter(set.set_no)} <em>· ${turnLabel(set.set_no, c)}</em>${set.players.some(p => p.name === you.name) ? ' · yours' : ''}</div>
       <ul class="ledger">
         ${set.players.map(p => `
           <li class="row ${p.name === you.name ? 'me' : ''}">
@@ -452,6 +452,14 @@ function render() {
 }
 
 function setLetter(n) { return String.fromCharCode(64 + n); }
+
+/* Sets A and B are on the pitch. The rest come on in letter order as games end. */
+function turnLabel(setNo, c) {
+  const onPitch = c.sets_on_pitch || 2;
+  if (setNo <= onPitch) return 'on now';
+  const place = setNo - onPitch;
+  return place === 1 ? 'next on' : `${place}th on`;
+}
 
 function meBody(you, s, c) {
   const warn = flash ? `<div class="flash">${esc(flash)}</div>` : '';
@@ -505,12 +513,18 @@ function meBody(you, s, c) {
     </div>`;
 
   if (you.status === 'IN_SET') {
+    const onPitch = c.sets_on_pitch || 2;
+    const starting = you.set_no <= onPitch;
+    const note = starting
+      ? 'Your set starts the session. Drawn from the arrival log, not picked by anyone.'
+      : `Sets A to ${setLetter(onPitch)} start. Yours comes on as games finish, in letter order.`;
     return warn + head + stamp + `
       <div class="verdict">
         <span class="big">Set ${setLetter(you.set_no)}</span>
-        <span class="note">Slot ${you.slot}. Your set was drawn from the arrival log, not picked by anyone.</span>
+        <span class="note">${note}</span>
       </div>
-      <div style="margin-top:15px"></div>
+      <p class="hint">Slot ${you.slot}. ${turnLabel(you.set_no, c) === 'on now' ? 'On the pitch first.' : 'Position ' + turnLabel(you.set_no, c) + '.'}</p>
+      <div style="margin-top:13px"></div>
       <button class="btn ghost" id="btnLeave">Give up my place</button>`;
   }
 
