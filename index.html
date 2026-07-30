@@ -298,33 +298,52 @@ let draftName = '';      /* survives a re-render mid typing */
 /* --- api --------------------------------------------------------------- */
 async function api(payload) {
   if (API_URL.indexOf('PASTE_') === 0) throw new Error('API_URL is not set in index.html');
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    /* text/plain keeps this a simple request. A JSON content type would trigger
-       a CORS preflight that Apps Script does not answer. */
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(Object.assign({ device_id: deviceId }, payload)),
-    redirect: 'follow'
-  });
-  const data = await res.json();
-  if (data.ok === false && data.error) throw new Error(data.error);
+  let res;
+  try {
+    res = await fetch(API_URL, {
+      method: 'POST',
+      /* text/plain keeps this a simple request. A JSON content type would trigger
+         a CORS preflight that Apps Script does not answer. */
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ device_id: deviceId }, payload)),
+      redirect: 'follow'
+    });
+  } catch (e) {
+    throw new Error('No connection. Check your data and tap again.');
+  }
+  let data;
+  try { data = await res.json(); }
+  catch (e) { throw new Error('The pitch is not answering properly. Tap again in a moment.'); }
+  if (data && data.ok === false) throw new Error(data.error || 'That did not go through.');
   return data;
 }
 
-async function refresh() {
-  try {
-    const data = await api({ action: 'state' });
-    apply(data);
-  } catch (e) {
-    flash = e.message;
-    render();
-  }
+/* A reply that is missing these is not a state. Apps Script occasionally answers
+   a redirected poll with its plain health response, and accepting that as state
+   was what produced the error on an idle page. */
+function looksLikeState(d) {
+  return !!(d && d.session && d.config && d.you && Array.isArray(d.arrivals));
 }
 
 function apply(data) {
-  state = data.state && data.state.ok ? data.state : data;
+  const next = looksLikeState(data && data.state) ? data.state
+             : looksLikeState(data) ? data : null;
+  if (!next) throw new Error('The pitch sent back something unexpected.');
+  state = next;
   skew = new Date(state.server_iso).getTime() - Date.now();
   render();
+}
+
+/* Background polls stay quiet. Only something the player actually tapped is
+   allowed to put an error on screen, and the last good state stays visible. */
+async function refresh(silent) {
+  try {
+    apply(await api({ action: 'state' }));
+  } catch (e) {
+    if (silent) return;
+    flash = e.message;
+    render();
+  }
 }
 
 /* --- actions ----------------------------------------------------------- */
@@ -393,7 +412,10 @@ function setHTML(node, html) {
 }
 
 function render() {
-  if (!state) { if (flash) el('meBody').innerHTML = `<div class="flash">${esc(flash)}</div>`; return; }
+  if (!state || !state.session || !state.config || !state.you) {
+    if (flash) el('meBody').innerHTML = `<div class="flash">${esc(flash)}</div>`;
+    return;
+  }
   const c = state.config, s = state.session, you = state.you;
   const off = !s.is_session_day;
 
@@ -547,7 +569,7 @@ function meBody(you, s, c) {
 
 /* --- countdown -------------------------------------------------------- */
 function tick() {
-  if (!state) return;
+  if (!state || !state.session) return;
   const clock = el('clock'), label = el('clockLabel');
   if (!state.session.is_session_day) {
     label.textContent = 'Next session';
@@ -582,11 +604,12 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'nameInput') { e.preventDefault(); addName(); }
 });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(true); });
 
 setInterval(tick, 1000);
-setInterval(() => { if (!document.hidden && !busy) refresh(); }, 8000);
+setInterval(() => { if (!document.hidden && !busy) refresh(true); }, 8000);
 refresh();
 </script>
 </body>
 </html>
+
