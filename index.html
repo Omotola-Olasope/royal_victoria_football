@@ -293,6 +293,7 @@ let state = null;
 let skew = 0;            /* server clock minus this phone's clock */
 let flash = '';
 let busy = false;
+let draftName = '';      /* survives a re-render mid typing */
 
 /* --- api --------------------------------------------------------------- */
 async function api(payload) {
@@ -329,9 +330,11 @@ function apply(data) {
 /* --- actions ----------------------------------------------------------- */
 async function addName() {
   const input = document.getElementById('nameInput');
-  const name = (input.value || '').trim();
+  const name = ((input && input.value) || draftName || '').trim();
   if (name.length < 2) { flash = 'Enter the name your team knows you by.'; return render(); }
+  draftName = name;
   await run(() => api({ action: 'register', name }));
+  if (!flash) draftName = '';
   await refresh();
 }
 
@@ -380,34 +383,48 @@ function el(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function pad(n) { return String(n).padStart(2, '0'); }
 
+/* Only touch the DOM when the markup actually differs. Rebuilding identical
+   HTML every eight seconds is what made the page flicker and what threw away
+   whatever was half typed in the name field. */
+function setHTML(node, html) {
+  if (node.__last === html) return;
+  node.__last = html;
+  node.innerHTML = html;
+}
+
 function render() {
   if (!state) { if (flash) el('meBody').innerHTML = `<div class="flash">${esc(flash)}</div>`; return; }
   const c = state.config, s = state.session, you = state.you;
+  const off = !s.is_session_day;
 
   el('pitch').textContent = c.pitch_name;
   el('date').textContent = s.date;
   el('cutoff').textContent = s.cutoff_local;
   tick();
 
-  el('meState').textContent = ({
+  el('meState').textContent = off ? 'closed' : ({
     NOT_CHECKED_IN: 'not checked in', IN_SET: 'playing', IN_QUEUE: 'waiting'
   })[you.status] || '—';
-  el('meBody').innerHTML = meBody(you, s, c);
 
+  /* Never redraw this panel while somebody is typing into it. */
+  const typing = document.activeElement && document.activeElement.id === 'nameInput';
+  if (!typing) setHTML(el('meBody'), meBody(you, s, c));
+
+  el('arrivalsCard').classList.toggle('hidden', off);
   const live = state.arrivals.filter(a => a.state !== 'left');
   el('arrivalsCount').textContent = live.length + ' checked in';
-  el('arrivals').innerHTML = state.arrivals.length
+  setHTML(el('arrivals'), state.arrivals.length
     ? state.arrivals.map(a => `
       <li class="row ${a.name === you.name ? 'me' : ''} ${a.before_cutoff ? '' : 'late'} ${a.state === 'left' ? 'gone' : ''}">
         <span class="n">${pad(a.n)}</span>
         <span class="who">${esc(a.name)}</span>
         <span class="t">${a.time}</span>
       </li>`).join('')
-    : '<li class="empty">Nobody has tapped in yet. Be the first name on the sheet.</li>';
+    : '<li class="empty">Nobody has tapped in yet. Be the first name on the sheet.</li>');
 
-  el('setsCard').classList.toggle('hidden', !state.sets.length);
+  el('setsCard').classList.toggle('hidden', off || !state.sets.length);
   el('setsCount').textContent = state.sets.length + ' of ' + c.max_sets;
-  el('sets').innerHTML = state.sets.map(set => `
+  setHTML(el('sets'), state.sets.map(set => `
     <div class="sheet">
       <div class="sheet-no">Set ${setLetter(set.set_no)}${set.players.some(p => p.name === you.name) ? ' <em>· yours</em>' : ''}</div>
       <ul class="ledger">
@@ -418,20 +435,20 @@ function render() {
             <span class="t"></span>
           </li>`).join('')}
       </ul>
-    </div>`).join('');
+    </div>`).join(''));
 
-  el('queueCard').classList.toggle('hidden', s.phase === 'OPEN' || !state.queue.length);
+  el('queueCard').classList.toggle('hidden', off || s.phase === 'OPEN' || !state.queue.length);
   el('queueCount').textContent = state.queue.length;
-  el('queue').innerHTML = state.queue.map(q => `
+  setHTML(el('queue'), state.queue.map(q => `
     <li class="row ${q.name === you.name ? 'me' : ''}">
       <span class="n">${pad(q.pos)}</span>
       <span class="who">${esc(q.name)}</span>
       <span class="t">${q.time}</span>
-    </li>`).join('');
+    </li>`).join(''));
 
-  el('seeds').innerHTML = state.formations.length
+  setHTML(el('seeds'), off ? '' : (state.formations.length
     ? state.formations.map(f => `<div class="seed"><b>${f.kind}</b> ${f.formed} · seed ${f.seed_hex}</div>`).join('')
-    : '<div>No draw yet</div>';
+    : '<div>No draw yet</div>'));
 }
 
 function setLetter(n) { return String.fromCharCode(64 + n); }
@@ -439,14 +456,28 @@ function setLetter(n) { return String.fromCharCode(64 + n); }
 function meBody(you, s, c) {
   const warn = flash ? `<div class="flash">${esc(flash)}</div>` : '';
 
-  if (s.phase === 'NO_SESSION') {
-    return warn + `<p class="empty">No session today. Check-in opens on match day.</p>`;
+  if (!s.is_session_day) {
+    const days = s.session_days === 'ANY' ? 'match day' : s.session_days;
+    const signed = state.counts && state.counts.registered
+      ? `${state.counts.registered} ${state.counts.registered === 1 ? 'name is' : 'names are'} down so far.` : '';
+    if (!you.registered) {
+      return warn + `
+        <p class="hint" style="margin:0 0 12px">No session today, but put your name down now and you are ready for ${days}. ${signed}</p>
+        <input class="field" id="nameInput" placeholder="Your name" autocomplete="name" enterkeyhint="done" value="${esc(draftName)}">
+        <button class="btn" id="btnName" ${busy ? 'disabled' : ''}>${busy ? 'Adding…' : 'Add my name'}</button>`;
+    }
+    return warn + `<div class="you-name">${esc(you.name)}</div>
+      <div class="verdict">
+        <span class="big">Ready</span>
+        <span class="note">Your name is down. Check in on ${days} when you reach the pitch.</span>
+      </div>
+      <p class="hint">${signed}</p>`;
   }
 
   if (!you.registered) {
     return warn + `
       <p class="hint" style="margin:0 0 12px">Put your name down once. This phone remembers it after that.</p>
-      <input class="field" id="nameInput" placeholder="Your name" autocomplete="name" enterkeyhint="done">
+      <input class="field" id="nameInput" placeholder="Your name" autocomplete="name" enterkeyhint="done" value="${esc(draftName)}">
       <button class="btn" id="btnName" ${busy ? 'disabled' : ''}>${busy ? 'Adding…' : 'Add my name'}</button>`;
   }
 
@@ -503,8 +534,14 @@ function meBody(you, s, c) {
 /* --- countdown -------------------------------------------------------- */
 function tick() {
   if (!state) return;
-  const left = Math.round((new Date(state.session.cutoff_iso).getTime() - (Date.now() + skew)) / 1000);
   const clock = el('clock'), label = el('clockLabel');
+  if (!state.session.is_session_day) {
+    label.textContent = 'Next session';
+    clock.classList.remove('past');
+    clock.textContent = state.session.session_days === 'ANY' ? 'any day' : state.session.session_days;
+    return;
+  }
+  const left = Math.round((new Date(state.session.cutoff_iso).getTime() - (Date.now() + skew)) / 1000);
   if (left > 0) {
     label.textContent = 'Draw in';
     clock.classList.remove('past');
@@ -518,6 +555,9 @@ function tick() {
 }
 
 /* --- events ----------------------------------------------------------- */
+document.addEventListener('input', e => {
+  if (e.target.id === 'nameInput') draftName = e.target.value;
+});
 document.addEventListener('click', e => {
   const t = e.target.closest('button');
   if (!t) return;
