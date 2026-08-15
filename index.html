@@ -347,12 +347,25 @@ async function refresh(silent) {
 }
 
 /* --- actions ----------------------------------------------------------- */
+/* Signing in is now claiming an ID the coordinator issued, not inventing a name.
+   A player who could mint his own identity could mint a second one, take two
+   arrival slots and keep whichever set he preferred, leaving a ghost holding a
+   place in the other. Nobody can do that if nobody can mint an identity.
+
+   The claim has to be made at the pitch, which is why an ID can safely be sent
+   out the night before. */
 async function addName() {
   const input = document.getElementById('nameInput');
-  const name = ((input && input.value) || draftName || '').trim();
-  if (name.length < 2) { flash = 'Enter the name your team knows you by.'; return render(); }
-  draftName = name;
-  await run(() => api({ action: 'register', name }));
+  const raw = ((input && input.value) || draftName || '').trim();
+  if (raw.length < 4) { flash = 'Enter the player ID the coordinator gave you.'; return render(); }
+  draftName = raw;
+
+  let extra = {};
+  const fix = await position();          /* never fatal: the code is the fallback */
+  if (fix) extra = Object.assign(extra, fix);
+  extra = Object.assign(extra, presenceToken);
+
+  await run(() => api(Object.assign({ action: 'bind', player_id: raw }, extra)));
   if (!flash) draftName = '';
   await refresh();
 }
@@ -371,10 +384,18 @@ function position() {
 async function checkIn() {
   await run(async () => {
     let extra = Object.assign({}, presenceToken);
-    if (state.config.verification_mode === 'gps') {
+    const mode = state.config.verification_mode;
+    /* Was `=== 'gps'` only, so under 'all' no location was ever requested and GPS
+       could never pass, forcing everybody onto the code. */
+    if (mode === 'gps' || mode === 'all') {
       const fix = await position();
-      if (!fix) throw new Error('Your phone did not share a location. Allow location for this site, then tap again.');
-      extra = Object.assign(extra, fix);
+      /* Under 'all' a refused or missing fix is not the end: fall through and let
+         the scanned code speak for him. Under plain gps there is nothing to fall
+         through to, so say so plainly. */
+      if (!fix && mode === 'gps') {
+        throw new Error('Your phone did not share a location. Allow location for this site, then tap again.');
+      }
+      if (fix) extra = Object.assign(extra, fix);
     }
     const data = await api(Object.assign({ action: 'checkin' }, extra));
     if (data.state) apply(data.state);
@@ -497,9 +518,10 @@ function meBody(you, s, c) {
       ? `${state.counts.registered} ${state.counts.registered === 1 ? 'name is' : 'names are'} down so far.` : '';
     if (!you.registered) {
       return warn + `
-        <p class="hint" style="margin:0 0 12px">No session today, but put your name down now and you are ready for ${days}. ${signed}</p>
-        <input class="field" id="nameInput" placeholder="Your name" autocomplete="name" enterkeyhint="done" value="${esc(draftName)}">
-        <button class="btn" id="btnName" ${busy ? 'disabled' : ''}>${busy ? 'Adding…' : 'Add my name'}</button>`;
+        <p class="hint" style="margin:0 0 12px">Sign in with the player ID the coordinator gave you. You only do this once, at the pitch. ${signed}</p>
+        <input class="field" id="nameInput" placeholder="Player ID" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" value="${esc(draftName)}">
+        <button class="btn" id="btnName" ${busy ? 'disabled' : ''}>${busy ? 'Signing in…' : 'Sign in'}</button>
+        <p class="hint" style="margin:12px 0 0">Haven't got one? Ask the coordinator and he'll register you.</p>`;
     }
     return warn + `<div class="you-name">${esc(you.name)}</div>
       <div class="verdict">
@@ -511,9 +533,10 @@ function meBody(you, s, c) {
 
   if (!you.registered) {
     return warn + `
-      <p class="hint" style="margin:0 0 12px">Put your name down once. This phone remembers it after that.</p>
-      <input class="field" id="nameInput" placeholder="Your name" autocomplete="name" enterkeyhint="done" value="${esc(draftName)}">
-      <button class="btn" id="btnName" ${busy ? 'disabled' : ''}>${busy ? 'Adding…' : 'Add my name'}</button>`;
+      <p class="hint" style="margin:0 0 12px">Sign in with the player ID the coordinator gave you. This phone remembers it after that, so you only do it once.</p>
+      <input class="field" id="nameInput" placeholder="Player ID" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" value="${esc(draftName)}">
+      <button class="btn" id="btnName" ${busy ? 'disabled' : ''}>${busy ? 'Signing in…' : 'Sign in'}</button>
+      <p class="hint" style="margin:12px 0 0">Haven't got one? Ask the coordinator and he'll register you. If your phone can't get a location, scan the code on the screen at the pitch.</p>`;
   }
 
   const head = `<div class="you-name">${esc(you.name)}</div>`;

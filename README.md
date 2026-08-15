@@ -7,11 +7,27 @@ recomputable so no coordinator has to defend a decision.
 **Status: live and proven.** Used successfully on a real Saturday with names
 entered through the coordinator page.
 
-Backend `Code.gs` version 1.4.0.
+Backend `Code.gs` version 1.5.0.
 
 ---
 
-## What is new in 1.4.0
+## What is new in 1.5.0
+
+1. **You sign in with a player ID, not a name.** Identity is issued by the
+   coordinator and can never be minted by a player, so nobody can create a second
+   self, hold two arrival slots and keep whichever set he prefers.
+2. **Bind once.** The first phone to present an ID owns it. `Release phone` on the
+   coordinator page unties it for a new handset.
+3. **First bind must happen at the pitch**, which is why IDs can safely be sent
+   out in advance. `Allow bind` is the coordinator's ten minute override.
+4. **`verification_mode: all`.** GPS first, then the QR on the pitch display.
+5. **The QR display works from GitHub Pages** and shows the arrival count. Its
+   token endpoint is no longer world readable.
+6. **Flagging.** A man who passes by scanning while his phone reports him outside
+   the geofence gets in, and gets flagged for the coordinator.
+7. Coordinator page shows every ID, and can rename, release and clear flags.
+
+## What was new in 1.4.0
 
 1. **Three selectable draw rules.** `spread` is the new default, `banded` is the
    old one kept frozen, `open` is available one config key away.
@@ -73,7 +89,10 @@ that column ever came back as the string `"TRUE"`.
 | `sets_on_pitch` | 2 | How many sets play at once |
 | `draw_rule` | spread | `spread`, `banded` or `open`. An unrecognised value raises an error |
 | `allow_new_sets_after_cutoff` | TRUE | |
-| `verification_mode` | none | `none`, `gps`, `qr`, `nfc` |
+| `verification_mode` | all | `all`, `none`, `gps`, `qr`, `nfc`. `all` is GPS then QR. An unrecognised value raises an error |
+| `geofence_lat` / `geofence_lng` | 51.4998 / 0.06674 | The pitch |
+| `geofence_radius_m` | 150 | |
+| `max_accuracy_m` | 50 | **Must be well inside the radius.** The check compares the reported point against the radius and does not widen it by the accuracy, so a tolerance larger than the radius makes the geofence meaningless |
 | `one_player_per_device` | TRUE | |
 
 Config is cached for 60 seconds. `setup()` is safe to re-run: it adds config keys
@@ -275,6 +294,29 @@ running next Saturday.
 | `removePlayer(name)` | Removes one registration |
 | `showCoordinatorKey()` | Prints the admin key |
 
+## Signing in
+
+A man opens the app, types the ID the coordinator gave him, and the phone is
+bound to him for good. He never types it again.
+
+- IDs are hex, so `O` is read as zero and `I` or `L` as one. Case, spaces and
+  dashes are ignored. Nobody fails because he misheard a letter across a pitch.
+- The first phone wins. A second is refused and sent to the coordinator.
+- The first bind must pass verification, so it happens at the pitch. **That is why
+  IDs can be sent out the night before.** Send them privately, one to one, not as
+  a list in the group.
+- `Allow bind` opens ten minutes for one man, recorded in `Audit` as
+  `coordinator_grant` so it is visibly different from one earned at the pitch.
+
+## The pitch display
+
+`display.html` needs `API_URL` set, and the coordinator page unlocked once on the
+same device: both pages share an origin, so it reads the key from local storage
+and nothing secret goes into the repository.
+
+It shows the rotating code, the arrival count, and how many check-ins are waiting
+to be looked at. It holds a screen wake lock so a propped-up phone does not sleep.
+
 ## Coordinator page
 
 Gated by the admin key, stored in Script Properties. Operations: `roster`,
@@ -336,6 +378,16 @@ correctly until it has run.
    off dropped back into the queue as the earliest waiting arrival and
    `fillVacancies_` put him straight back into the slot you had just removed him
    from.
-10. The `spread` tail merge could collapse to a single band and widen the opening
+11. `doGet` served `qr_token` with no authentication, so anyone holding the web
+    app URL could fetch the live QR code from anywhere and check in as though
+    standing on the pitch. Now an authenticated admin operation.
+12. `checkIn_` only requested a location when the mode was exactly `gps`, so
+    under `all` no location was ever sent and GPS could never pass.
+13. `display.html` called `google.script.run`, which does not exist on GitHub
+    Pages, so the page threw once a second for ever and showed only "loading".
+14. The boolean config parser treated anything that was not the literal word
+    FALSE as TRUE, so a typo or a key name pasted into the value column read as
+    TRUE silently.
+15. The `spread` tail merge could collapse to a single band and widen the opening
     band, bumping early arrivals into later sets. Caught by the property tests
     before it shipped.

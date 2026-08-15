@@ -1,61 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<base target="_top">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Scan to check in</title>
 <style>
   html,body{margin:0;height:100%;background:#131C24;color:#EEEFE8;
     font-family:'Archivo Narrow','Helvetica Neue',sans-serif;
     display:flex;align-items:center;justify-content:center;text-align:center}
-  .wrap{padding:24px}
-  h1{font-size:15px;letter-spacing:.22em;text-transform:uppercase;margin:0 0 18px;opacity:.65;font-weight:600}
-  #qr{background:#fff;padding:16px;display:inline-block;line-height:0;border-radius:4px}
-  .bar{height:6px;background:#2A3742;margin:20px auto 8px;max-width:280px;overflow:hidden}
+  .wrap{padding:20px;width:100%;max-width:420px}
+  h1{font-size:15px;letter-spacing:.22em;text-transform:uppercase;margin:0 0 16px;opacity:.65;font-weight:600}
+  #qr{background:#fff;padding:16px;display:inline-block;line-height:0;border-radius:4px;min-height:60px;min-width:60px}
+  .bar{height:6px;background:#2A3742;margin:18px auto 8px;max-width:280px;overflow:hidden}
   .bar i{display:block;height:100%;background:#9E2B21;width:100%;transition:width 1s linear}
   .meta{font-family:'Courier New',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.6}
-  .code{font-family:'Courier New',monospace;font-size:22px;letter-spacing:.3em;margin-top:14px}
+  .code{font-family:'Courier New',monospace;font-size:22px;letter-spacing:.3em;margin-top:12px}
+  .tally{display:flex;justify-content:center;gap:34px;margin-top:26px;padding-top:20px;border-top:1px solid #2A3742}
+  .tally div{min-width:64px}
+  .tally b{display:block;font-size:38px;line-height:1;font-weight:700}
+  .tally span{font-family:'Courier New',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;opacity:.55}
+  .flag b{color:#E0623A}
+  .err{background:#9E2B21;color:#fff;padding:14px 16px;font-size:15px;line-height:1.4;border-radius:3px;margin-top:16px;text-align:left}
+  .err b{display:block;font-size:13px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
+  .hide{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Scan to check in</h1>
+  <h1 id="title">Scan to check in</h1>
   <div id="qr"></div>
   <div class="bar"><i id="bar"></i></div>
-  <div class="meta" id="meta">loading</div>
+  <div class="meta" id="meta">starting up</div>
   <div class="code" id="code"></div>
+
+  <div class="tally hide" id="tally">
+    <div><b id="nIn">0</b><span>checked in</span></div>
+    <div class="flag hide" id="flagBox"><b id="nFlag">0</b><span>to check</span></div>
+  </div>
+
+  <div class="err hide" id="err"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
-/* Set this to wherever index.html is hosted. */
+/* Both of these must match the other two pages. */
+var API_URL      = 'https://script.google.com/macros/s/AKfycbzA-ckrDg5ovx7czN9EPnfouqXSzy7VhgKX4YEZy4KU8mZA55G43hrHuj7a6WnTOWfu/exec';
 var FRONTEND_URL = 'https://omotola-olasope.github.io/royal_victoria_football/';
-var expires = 0;
 
-function draw(token) {
-  var url = FRONTEND_URL + (FRONTEND_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + token;
-  document.getElementById('qr').innerHTML = '';
-  QRCode.toCanvas(url, { width: 268, margin: 0 }, function (err, canvas) {
-    if (!err) document.getElementById('qr').appendChild(canvas);
-  });
-  document.getElementById('code').textContent = token;
+/* The code is fetched over HTTP now, not through google.script.run, which only
+   exists inside a page Apps Script itself served. That call is why this page sat
+   on "loading" for ever when opened from GitHub Pages: the object is undefined,
+   so it threw before any handler could report it.
+
+   The token endpoint is authenticated. This page is public, so the key is never
+   written into it: coordinator.html stores it in local storage and both pages are
+   on the same origin, so unlocking the coordinator page once on this device is
+   all that is needed. */
+function adminKey() {
+  try { return localStorage.getItem('sets.key') || ''; } catch (e) { return ''; }
 }
 
-function pull() {
-  google.script.run.withSuccessHandler(function (res) {
-    expires = res.expires_in;
-    draw(res.token);
-    document.getElementById('meta').textContent = 'code changes every ' + res.window_seconds + 's';
-  }).withFailureHandler(function (e) {
-    document.getElementById('meta').textContent = 'connection lost, retrying';
-  }).getQrTokenForDisplay();
+var el = function (id) { return document.getElementById(id); };
+var expires = 0, windowSeconds = 45, failures = 0, lastToken = '';
+
+function fail(title, detail) {
+  el('err').classList.remove('hide');
+  el('err').innerHTML = '<b>' + title + '</b>' + detail;
+}
+function clearFail() { el('err').classList.add('hide'); }
+
+function draw(token) {
+  if (token === lastToken) return;
+  lastToken = token;
+  var url = FRONTEND_URL + (FRONTEND_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + token;
+  el('qr').innerHTML = '';
+  QRCode.toCanvas(url, { width: 268, margin: 0 }, function (err, canvas) {
+    if (err) return fail('Could not draw the code', 'The QR library did not load. Check the connection and refresh.');
+    el('qr').appendChild(canvas);
+  });
+  el('code').textContent = token;
+}
+
+async function pull() {
+  var key = adminKey();
+  if (!key) {
+    return fail('Not unlocked on this device',
+      'Open coordinator.html on this same device and enter your coordinator key once. ' +
+      'This page then picks it up by itself.');
+  }
+  if (API_URL.indexOf('PASTE_') === 0) {
+    return fail('Not configured', 'API_URL has not been set in display.html.');
+  }
+  try {
+    var res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'admin', admin_key: key, op: 'qr_token' }),
+      redirect: 'follow'
+    });
+    var d = await res.json();
+    if (d.ok === false) return fail('The pitch refused', d.error || 'Unknown error.');
+
+    failures = 0; clearFail();
+    windowSeconds = d.window_seconds || 45;
+    expires = d.expires_in;
+    draw(d.token);
+    if (d.pitch_name) el('title').textContent = d.pitch_name;
+    el('meta').textContent = 'code changes every ' + windowSeconds + 's';
+
+    el('tally').classList.remove('hide');
+    el('nIn').textContent = d.checked_in;
+    el('flagBox').classList.toggle('hide', !d.flagged);
+    el('nFlag').textContent = d.flagged;
+  } catch (e) {
+    failures++;
+    /* The old version updated a status line and retried silently, which is why a
+       broken page looked like a slow one. Say so after a couple of tries. */
+    if (failures >= 2) {
+      fail('Cannot reach the pitch', 'Retrying every few seconds. Check this device is online.');
+    }
+    expires = 5;
+  }
 }
 
 setInterval(function () {
   expires--;
-  document.getElementById('bar').style.width = Math.max(0, expires * 8) + '%';
+  /* Was expires * 8, which assumed a 12.5 second window and sat pegged at full
+     for a 45 second one, so the bar told you nothing. */
+  el('bar').style.width = Math.max(0, Math.min(100, (expires / windowSeconds) * 100)) + '%';
   if (expires <= 0) pull();
 }, 1000);
 
+/* A phone propped up at the pitch will sleep and stop showing the code. */
+async function keepAwake() {
+  try {
+    if ('wakeLock' in navigator) {
+      var lock = await navigator.wakeLock.request('screen');
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') keepAwake();
+      });
+      return lock;
+    }
+  } catch (e) { /* not fatal, the screen just sleeps */ }
+}
+
+keepAwake();
 pull();
 </script>
 </body>

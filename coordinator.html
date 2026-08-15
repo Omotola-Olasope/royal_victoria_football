@@ -63,6 +63,7 @@ body{
 .seed{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--ink-soft);line-height:1.55;word-break:break-all;padding:4px 0;border-bottom:1px solid var(--rule)}
 .seed:last-child{border-bottom:0}
 .seed b{color:var(--ink);text-transform:uppercase;letter-spacing:.08em}
+.pid{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--ink-soft);margin-top:2px}
 .testbar{border:1.5px solid var(--stamp);background:var(--stamp);color:var(--stub);padding:11px 14px;margin-bottom:14px;box-shadow:4px 4px 0 var(--shadow)}
 .testbar b{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:.08em;text-transform:uppercase;display:block}
 .testbar span{font-family:'Space Mono',monospace;font-size:12px}
@@ -122,9 +123,16 @@ body{
     <div id="queue"></div>
   </section>
 
+  <section class="stub hidden" id="flagCard">
+    <div class="stub-head"><span>Worth a look</span><span id="flagCount"></span></div>
+    <div id="flags"></div>
+  </section>
+
   <section class="stub hidden" id="rosterCard">
-    <div class="stub-head"><span>Everybody registered</span><span>tap to record</span></div>
+    <div class="stub-head"><span>Everybody registered</span><span id="rosterMeta">tap to record</span></div>
+    <div id="rosterMsg"></div>
     <div id="roster"></div>
+    <p class="hint">The code under each name is his player ID. He types it into his own phone once, at the pitch, and never again. Send them out privately the night before rather than posting the list in the group.</p>
   </section>
 
   <section class="stub hidden" id="drawsCard">
@@ -276,15 +284,34 @@ function render(){
       <span class="done"><b>${esc(q.time)}</b></span>
     </div>`).join(''));
 
+  el('flagCard').classList.toggle('hidden', !(d.flagged || []).length);
+  el('flagCount').textContent = (d.flagged || []).length + ' to check';
+  setHTML(el('flags'), (d.flagged || []).map(f => `
+    <div class="row" style="grid-template-columns:1fr auto">
+      <span><span class="who">${esc(f.name)}</span>
+        <div class="hint" style="margin-top:3px">${esc(f.time)} · ${esc(f.note)}</div></span>
+      <span style="display:flex;gap:8px">
+        <button class="tap ghost" data-clear="${esc(f.name)}">Fine</button>
+        <button class="tap warn" data-remove="${esc(f.name)}">Remove</button>
+      </span>
+    </div>`).join(''));
+
+  el('rosterMeta').textContent = d.players.filter(p => !p.signed_in).length + ' not signed in';
   setHTML(el('roster'), d.players.length
     ? d.players.map(p => {
-        if (!p.checked_in) return `<div class="row"><span class="who">${esc(p.name)}</span>
-             <button class="tap" data-name="${esc(p.name)}">Record</button></div>`;
-        return `<div class="row"><span class="who">${esc(p.name)}</span>
-             <span style="display:flex;gap:8px;align-items:center">
-               <span class="done"><b>${esc(p.time)}</b>${p.method === 'coordinator' ? 'by you' : 'self'}</span>
-               <button class="tap warn" data-remove="${esc(p.name)}">Remove</button>
-             </span></div>`;
+        const id = `<div class="pid">${esc(p.player_id)}${p.signed_in ? '' : ' · no phone yet'}</div>`;
+        const who = `<span><span class="who">${esc(p.name)}${p.flagged ? ' <em style="font-style:normal;color:var(--stamp);font-size:13px">flagged</em>' : ''}</span>${id}</span>`;
+        const edit = `<button class="tap ghost" data-rename="${esc(p.name)}">Name</button>`;
+        const phone = p.signed_in
+          ? `<button class="tap ghost" data-release="${esc(p.name)}">Release</button>`
+          : `<button class="tap ghost" data-allow="${esc(p.name)}">Allow bind</button>`;
+        if (!p.checked_in) {
+          return `<div class="row">${who}<span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            ${edit}${phone}<button class="tap" data-name="${esc(p.name)}">Record</button></span></div>`;
+        }
+        return `<div class="row">${who}<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+          <span class="done"><b>${esc(p.time)}</b>${p.method === 'coordinator' ? 'by you' : esc(p.method)}</span>
+          ${edit}${phone}<button class="tap warn" data-remove="${esc(p.name)}">Remove</button></span></div>`;
       }).join('')
     : '<p class="empty">Nobody has registered yet.</p>');
 
@@ -312,6 +339,16 @@ const markOff = name => confirm('Take ' + name + ' off? His slot goes to the man
   && act(() => admin('mark_off', { name }), 'msg');
 const removeIn = name => confirm('Remove ' + name + " from today's arrivals?")
   && act(() => admin('remove_checkin', { name }), 'msg');
+const allowBind = name => confirm('Let ' + name + ' sign in on his phone for the next 10 minutes without proving he is at the pitch?\n\nUse this when his phone will not give a location and there is no code up. It is recorded.')
+  && act(() => admin('allow_bind', { name }), 'rosterMsg');
+const release = name => confirm('Release ' + name + "'s phone? Use this if he has a new handset or cleared his browser. He signs in again with his ID at the pitch.")
+  && act(() => admin('release_phone', { name }), 'rosterMsg');
+const clearFlag = name => act(() => admin('clear_flag', { name }), 'msg');
+function rename(name) {
+  const fresh = prompt('New name for ' + name + '?\n\nThis is only what gets printed on the set list. His player ID does not change.', name);
+  if (!fresh || fresh.trim() === name) return;
+  act(() => admin('set_name', { name, new_name: fresh.trim() }), 'rosterMsg');
+}
 
 function redraw(){
   const w = WINDOWS.filter(x => x.v === ui.window)[0];
@@ -337,6 +374,10 @@ document.addEventListener('click', e => {
   if (b.dataset.rule)   { ui.rule = b.dataset.rule; return render(); }
   if (b.dataset.win)    { ui.window = b.dataset.win; return render(); }
   if (b.dataset.off)    return markOff(b.dataset.off);
+  if (b.dataset.allow)  return allowBind(b.dataset.allow);
+  if (b.dataset.release) return release(b.dataset.release);
+  if (b.dataset.rename) return rename(b.dataset.rename);
+  if (b.dataset.clear)  return clearFlag(b.dataset.clear);
   if (b.dataset.remove) return removeIn(b.dataset.remove);
   if (b.dataset.name)   return record(b.dataset.name);
 });
