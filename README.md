@@ -7,11 +7,18 @@ recomputable so no coordinator has to defend a decision.
 **Status: live and proven.** Used successfully on a real Saturday with names
 entered through the coordinator page.
 
-Backend `Code.gs` version 1.5.1.
+Backend `Code.gs` version 1.5.2.
 
 ---
 
-## What is new in 1.5.1
+## What is new in 1.5.2
+
+- `testStart` leaves the unbound rehearsal men **not yet arrived**, so a spare
+  phone can practise the whole path: sign in with an ID, then check in. Before,
+  they were already recorded as present and the check-in button never appeared.
+- `testStart` now prints the unbound IDs so you can type one straight in.
+
+## What was new in 1.5.1
 
 - **The QR code actually draws.** The encoder is now written into `display.html`
   itself rather than pulled from a CDN, so no browser shield or filter list can
