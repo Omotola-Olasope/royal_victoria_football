@@ -7,11 +7,22 @@ recomputable so no coordinator has to defend a decision.
 **Status: live and proven.** Used successfully on a real Saturday with names
 entered through the coordinator page.
 
-Backend `Code.gs` version 1.5.0.
+Backend `Code.gs` version 1.5.1.
 
 ---
 
-## What is new in 1.5.0
+## What is new in 1.5.1
+
+- **The QR code actually draws.** The encoder is now written into `display.html`
+  itself rather than pulled from a CDN, so no browser shield or filter list can
+  quietly stop the pitch display working. It is checked module for module against
+  a reference encoder across 54 codes, versions 1 to 10.
+- **Coordinator page is tabbed**: Pitch, People, Draw, Admin, each with a count,
+  so twenty five names no longer means scrolling past everything to reach
+  anything. Roster has a search box, long lists scroll inside their card, and on a
+  laptop the pitch and queue sit side by side.
+
+## What was new in 1.5.0
 
 1. **You sign in with a player ID, not a name.** Identity is issued by the
    coordinator and can never be minted by a player, so nobody can create a second
@@ -388,6 +399,15 @@ correctly until it has run.
 14. The boolean config parser treated anything that was not the literal word
     FALSE as TRUE, so a typo or a key name pasted into the value column read as
     TRUE silently.
-15. The `spread` tail merge could collapse to a single band and widen the opening
+16. `display.html` drew its QR from a CDN script. On a browser that blocks it,
+    the draw threw, and because `lastToken` was set before the draw rather than
+    after, every later poll skipped drawing while the count, title and progress
+    bar all kept updating, so the page looked healthy with an empty white square.
+    The encoder is now inlined and `lastToken` is set only on success.
+17. The inlined encoder itself had three faults caught by checking it against a
+    reference: byte-mode character capacity used where data codeword capacity was
+    needed, format bits reversed in one copy and swapped in the other, and no
+    version information block for versions 7 and up.
+18. The `spread` tail merge could collapse to a single band and widen the opening
     band, bumping early arrivals into later sets. Caught by the property tests
     before it shipped.

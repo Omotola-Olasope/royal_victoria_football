@@ -64,6 +64,27 @@ body{
 .seed:last-child{border-bottom:0}
 .seed b{color:var(--ink);text-transform:uppercase;letter-spacing:.08em}
 .pid{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--ink-soft);margin-top:2px}
+.tabs{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);margin:0 0 14px;
+  border:1.5px solid var(--ink);background:var(--stub);box-shadow:4px 4px 0 var(--shadow)}
+.tabs button{appearance:none;border:0;border-right:1.5px solid var(--ink);background:transparent;color:var(--ink);
+  cursor:pointer;padding:12px 4px 10px;min-height:54px;font-family:'Archivo Black',sans-serif;font-size:11px;
+  letter-spacing:.06em;text-transform:uppercase;line-height:1.15}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--stub)}
+.tabs b{display:block;font-family:'Space Mono',monospace;font-size:15px;letter-spacing:0;margin-top:3px;font-weight:700}
+.tabs .dot{color:var(--stamp)}
+.tabs button[aria-selected="true"] .dot{color:#F0A08F}
+.scroller{max-height:52vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.search{width:100%;font-family:'Archivo Narrow',sans-serif;font-size:16px;font-weight:600;padding:11px 12px;
+  border:1.5px solid var(--ink);background:#fff;color:var(--ink);margin-bottom:10px}
+.search:focus-visible{outline:3px solid var(--stamp);outline-offset:2px}
+.acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+@media (min-width:900px){
+  .docket{max-width:920px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .grid2>.stub+.stub{margin-top:0}
+  .scroller{max-height:60vh}
+}
 .testbar{border:1.5px solid var(--stamp);background:var(--stamp);color:var(--stub);padding:11px 14px;margin-bottom:14px;box-shadow:4px 4px 0 var(--shadow)}
 .testbar b{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:.08em;text-transform:uppercase;display:block}
 .testbar span{font-family:'Space Mono',monospace;font-size:12px}
@@ -80,6 +101,8 @@ body{
   </header>
 
   <div class="tear"></div>
+
+  <nav class="tabs hidden" id="tabs"></nav>
 
   <section class="stub" id="gate">
     <div class="stub-head"><span>Coordinator key</span><span></span></div>
@@ -112,15 +135,16 @@ body{
     <p class="hint">Every man still here goes back in the hat. Anyone who has gone home or been taken off stays out. The old sets are kept in the sheet, not deleted, and each draw is listed below with its own seed so the group can check any of them.</p>
   </section>
 
+  <div class="grid2" id="pitchGrid">
   <section class="stub hidden" id="setsCard">
     <div class="stub-head"><span>On the pitch</span><span id="setsCount"></span></div>
     <div id="setsWarn"></div>
-    <div id="sets"></div>
+    <div class="scroller"><div id="sets"></div></div>
   </section>
 
   <section class="stub hidden" id="queueCard">
     <div class="stub-head"><span>Waiting</span><span id="queueCount"></span></div>
-    <div id="queue"></div>
+    <div class="scroller"><div id="queue"></div></div>
   </section>
 
   <section class="stub hidden" id="flagCard">
@@ -128,10 +152,13 @@ body{
     <div id="flags"></div>
   </section>
 
+  </div>
+
   <section class="stub hidden" id="rosterCard">
     <div class="stub-head"><span>Everybody registered</span><span id="rosterMeta">tap to record</span></div>
     <div id="rosterMsg"></div>
-    <div id="roster"></div>
+    <input class="search" id="rosterSearch" placeholder="Find a name or ID" autocomplete="off">
+    <div class="scroller"><div id="roster"></div></div>
     <p class="hint">The code under each name is his player ID. He types it into his own phone once, at the pitch, and never again. Send them out privately the night before rather than posting the list in the group.</p>
   </section>
 
@@ -181,7 +208,19 @@ let key = store.get('sets.key') || '';
 let busy = false, draft = '';
 /* Held here rather than read back off the DOM, so a background refresh cannot
    quietly reset a choice halfway through making it. */
-let ui = { rule: null, window: '10' };
+let ui = { rule: null, window: '10', tab: 'pitch', find: '' };
+
+/* Twenty five names on one page means scrolling past everything to reach
+   anything. The cards themselves are unchanged: this only decides which are on
+   screen. Every card still renders from the same data as before, so nothing that
+   worked has been rewired. */
+const TABS = [
+  { id: 'pitch',  label: 'Pitch',  cards: ['setsCard', 'queueCard'] },
+  { id: 'people', label: 'People', cards: ['addCard', 'rosterCard'] },
+  { id: 'draw',   label: 'Draw',   cards: ['drawCard', 'drawsCard'] },
+  { id: 'admin',  label: 'Admin',  cards: ['flagCard', 'dangerCard'] }
+];
+const ALL_CARDS = TABS.reduce((a, t) => a.concat(t.cards), []);
 let data = null;
 
 async function admin(op, extra) {
@@ -218,7 +257,8 @@ async function unlock() {
     await load();
     store.set('sets.key', key);
     el('gate').classList.add('hidden');
-    ['addCard','drawCard','rosterCard','dangerCard'].forEach(id => el(id).classList.remove('hidden'));
+    ['addCard','dangerCard'].forEach(id => selfHide(id, false));
+    render();
   } catch (e) {
     note('gateMsg', e.message);
   } finally { busy = false; el('btnKey').disabled = false; }
@@ -241,16 +281,29 @@ function render(){
     ? `<div class="testbar"><b>Test mode</b><span>Rehearsal day ${esc(d.sandbox.key)}. Real match data is hidden and safe. Ends ${esc(d.sandbox.expires)}, or run testEnd() in the editor.</span></div>`
     : '');
 
+  /* A count on each tab so nothing important hides behind one. */
+  const counts = {
+    pitch:  d.sets.reduce((a, s) => a + s.players.length, 0),
+    people: d.checked_in,
+    draw:   d.draws.length,
+    admin:  (d.flagged || []).length
+  };
+  setHTML(el('tabs'), TABS.map(t => `
+    <button data-tab="${t.id}" aria-selected="${t.id === ui.tab}">${t.label}
+      <b class="${t.id === 'admin' && counts.admin ? 'dot' : ''}">${counts[t.id]}</b></button>`).join(''));
+  el('tabs').classList.remove('hidden');
+
   el('date').textContent = d.session_date;
   el('cnt').textContent = d.checked_in + ' in';
   el('drawMeta').textContent = d.set_size + ' a side · ' + d.sets_on_pitch + ' on';
 
   if (!d.is_session_day) {
     setHTML(el('roster'), '<p class="empty">No session today. Recording is closed.</p>');
-    ['drawCard','setsCard','queueCard','drawsCard'].forEach(id => el(id).classList.add('hidden'));
+    ['drawCard','setsCard','queueCard','drawsCard','flagCard'].forEach(id => selfHide(id, true));
+    applyTab();
     return;
   }
-  el('drawCard').classList.remove('hidden');
+  selfHide('drawCard', false);
 
   setHTML(el('ruleChips'), (d.rules||[]).map(r =>
     `<button class="chip" data-rule="${esc(r)}" aria-pressed="${r===ui.rule}">${esc(r)}</button>`).join(''));
@@ -260,7 +313,7 @@ function render(){
     `<button class="chip" data-win="${w.v}" aria-pressed="${w.v===ui.window}">${w.label}</button>`).join(''));
 
   /* Sets, each man with a way to take him off. */
-  el('setsCard').classList.toggle('hidden', !d.sets.length);
+  selfHide('setsCard', !d.sets.length);
   el('setsCount').textContent = d.sets.length + ' sets';
   const unmixed = d.unmixed || [];
   setHTML(el('setsWarn'), unmixed.length
@@ -276,7 +329,7 @@ function render(){
         </div>`).join('')}
     </div>`).join(''));
 
-  el('queueCard').classList.toggle('hidden', !d.queue.length);
+  selfHide('queueCard', !d.queue.length);
   el('queueCount').textContent = d.queue.length + ' waiting';
   setHTML(el('queue'), d.queue.map(q => `
     <div class="row">
@@ -284,7 +337,7 @@ function render(){
       <span class="done"><b>${esc(q.time)}</b></span>
     </div>`).join(''));
 
-  el('flagCard').classList.toggle('hidden', !(d.flagged || []).length);
+  selfHide('flagCard', !(d.flagged || []).length);
   el('flagCount').textContent = (d.flagged || []).length + ' to check';
   setHTML(el('flags'), (d.flagged || []).map(f => `
     <div class="row" style="grid-template-columns:1fr auto">
@@ -297,8 +350,17 @@ function render(){
     </div>`).join(''));
 
   el('rosterMeta').textContent = d.players.filter(p => !p.signed_in).length + ' not signed in';
-  setHTML(el('roster'), d.players.length
-    ? d.players.map(p => {
+  const find = ui.find.trim().toLowerCase();
+  const shownPlayers = find
+    ? d.players.filter(p => (p.name + ' ' + p.player_id).toLowerCase().indexOf(find) >= 0)
+    : d.players;
+  setHTML(el('roster'), !d.players.length
+    ? '<p class="empty">Nobody has registered yet.</p>'
+    : !shownPlayers.length
+    ? '<p class="empty">Nobody matches that.</p>'
+    : shownPlayersHtml(shownPlayers));
+  function shownPlayersHtml(list) {
+    return list.map(p => {
         const id = `<div class="pid">${esc(p.player_id)}${p.signed_in ? '' : ' · no phone yet'}</div>`;
         const who = `<span><span class="who">${esc(p.name)}${p.flagged ? ' <em style="font-style:normal;color:var(--stamp);font-size:13px">flagged</em>' : ''}</span>${id}</span>`;
         const edit = `<button class="tap ghost" data-rename="${esc(p.name)}">Name</button>`;
@@ -306,20 +368,45 @@ function render(){
           ? `<button class="tap ghost" data-release="${esc(p.name)}">Release</button>`
           : `<button class="tap ghost" data-allow="${esc(p.name)}">Allow bind</button>`;
         if (!p.checked_in) {
-          return `<div class="row">${who}<span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+          return `<div class="row">${who}<span class="acts">
             ${edit}${phone}<button class="tap" data-name="${esc(p.name)}">Record</button></span></div>`;
         }
-        return `<div class="row">${who}<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+        return `<div class="row">${who}<span class="acts">
           <span class="done"><b>${esc(p.time)}</b>${p.method === 'coordinator' ? 'by you' : esc(p.method)}</span>
           ${edit}${phone}<button class="tap warn" data-remove="${esc(p.name)}">Remove</button></span></div>`;
-      }).join('')
-    : '<p class="empty">Nobody has registered yet.</p>');
+    }).join('');
+  }
 
-  el('drawsCard').classList.toggle('hidden', !d.draws.length);
+  selfHide('drawsCard', !d.draws.length);
   el('drawsCount').textContent = d.draws.length + (d.draws.length === 1 ? ' draw' : ' draws');
   setHTML(el('draws'), d.draws.map(f => `
     <div class="seed"><b>${esc(f.kind)}</b> ${esc(f.formed)} · ${esc(f.rule)}${f.late_window_min && f.late_window_min !== '0' ? ' · +' + esc(f.late_window_min) : ''}<br>
       seed ${esc(f.seed_hex)}${f.nonce ? ' · nonce ' + esc(f.nonce) : ''}</div>`).join(''));
+
+  applyTab();
+}
+
+/* Runs last, so a card that hid itself for its own reasons (no sets yet, no
+   flags) stays hidden. This only ever hides further, never reveals. */
+function applyTab() {
+  const shown = (TABS.filter(t => t.id === ui.tab)[0] || TABS[0]).cards;
+  ALL_CARDS.forEach(id => {
+    const node = el(id);
+    if (!node) return;
+    if (shown.indexOf(id) < 0) { node.classList.add('hidden'); return; }
+    if (node.dataset.selfHidden === '1') node.classList.add('hidden');
+    else node.classList.remove('hidden');
+  });
+  const grid = el('pitchGrid');
+  if (grid) grid.classList.toggle('hidden', ui.tab !== 'pitch');
+}
+
+/* Cards used to call classList.toggle('hidden') directly. They still decide, but
+   they record the decision so applyTab can honour it. */
+function selfHide(id, hide) {
+  const node = el(id);
+  if (!node) return;
+  node.dataset.selfHidden = hide ? '1' : '0';
 }
 
 async function act(fn, msgId){
@@ -371,6 +458,7 @@ document.addEventListener('click', e => {
     el('clearInput').value = ''; el('btnClear').disabled = true;
     return act(() => admin('reset_session'), 'dangerMsg');
   }
+  if (b.dataset.tab)    { ui.tab = b.dataset.tab; return render(); }
   if (b.dataset.rule)   { ui.rule = b.dataset.rule; return render(); }
   if (b.dataset.win)    { ui.window = b.dataset.win; return render(); }
   if (b.dataset.off)    return markOff(b.dataset.off);
@@ -383,6 +471,7 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('input', e => {
+  if (e.target.id === 'rosterSearch') { ui.find = e.target.value; return render(); }
   if (e.target.id === 'nameInput') draft = e.target.value;
   if (e.target.id === 'clearInput') {
     el('btnClear').disabled = (e.target.value || '').trim().toUpperCase() !== 'CLEAR';
@@ -398,7 +487,7 @@ document.addEventListener('keydown', e => {
 setInterval(() => {
   if (document.hidden || busy || !key) return;
   const a = document.activeElement;
-  if (a && (a.id === 'nameInput' || a.id === 'clearInput')) return;
+  if (a && (a.id === 'nameInput' || a.id === 'clearInput' || a.id === 'rosterSearch')) return;
   load().catch(() => {});
 }, 12000);
 
