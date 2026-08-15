@@ -7,11 +7,31 @@ recomputable so no coordinator has to defend a decision.
 **Status: live and proven.** Used successfully on a real Saturday with names
 entered through the coordinator page.
 
-Backend `Code.gs` version 1.5.2.
+Backend `Code.gs` version 1.6.0. Frontend 1.6.1.
 
 ---
 
-## What is new in 1.5.2
+## What is new in 1.6.1
+
+`index.html` only. The check-in help text was looked up by verification mode from
+a list that never gained an entry for `all`, and had no fallback, so a signed-in
+man waiting to check in was shown the word `undefined`. Fixed, with a fallback so
+a future mode degrades to a sensible line instead of that.
+
+## What was new in 1.6.0
+
+- **Rehearsals are named functions you can actually run.** The editor's Run
+  button takes no arguments, so `testStart(12, 4, true)` was impossible to
+  perform. Use `rehearse25()`, `rehearse40()`, `rehearse17()`,
+  `rehearseWithQR()`, `rehearseStatus()`, `rehearseEnd()`.
+- **Add to the roster without checking him in.** Issues an ID and puts him on the
+  list without recording an arrival, for handing IDs out in advance.
+- **Delete a player**, roster row and today's arrivals together, for cleaning up
+  after a test.
+- Each roster row now has an **ID** button that shows the code full size, for
+  reading out.
+
+## What was new in 1.5.2
 
 - `testStart` leaves the unbound rehearsal men **not yet arrived**, so a spare
   phone can practise the whole path: sign in with an ID, then check in. Before,
@@ -303,7 +323,10 @@ running next Saturday.
 | `setup()` | Builds sheets, seeds config, adds missing keys **and missing columns**, sets text formats. Safe to re-run |
 | `selfTest()` | Confirms the seed is deterministic and the shuffle reproducible |
 | `diagnose()` | Prints today's key, session day, raw and parsed cutoff, and what each check-in row holds |
-| `testStart(n)` | Rehearsal on a sandbox day. Destroys nothing |
+| `rehearse25()` `rehearse40()` `rehearse17()` | Rehearsal on a sandbox day, verification off. Destroys nothing |
+| `rehearseWithQR()` | 12 men, verification LIVE, four left to sign in. For testing GPS and the QR on a spare phone |
+| `rehearseStatus()` / `rehearseEnd()` | Is one running / end it |
+| `testStart(n, late, live)` | The function behind them. Cannot be run from the Run button, which passes no arguments |
 | `testStatus()` | Whether a sandbox is running |
 | `testEnd()` | Ends the rehearsal, restores the real day |
 | `simulate(n)` | Old rehearsal, in-place. Refuses if real arrivals exist for the day |
@@ -406,7 +429,10 @@ correctly until it has run.
 14. The boolean config parser treated anything that was not the literal word
     FALSE as TRUE, so a typo or a key name pasted into the value column read as
     TRUE silently.
-16. `display.html` drew its QR from a CDN script. On a browser that blocks it,
+16. The check-in help text was a lookup by verification mode with no fallback, so
+    adding the `all` mode without adding its line printed `undefined` on the
+    player's own stub.
+17. `display.html` drew its QR from a CDN script. On a browser that blocks it,
     the draw threw, and because `lastToken` was set before the draw rather than
     after, every later poll skipped drawing while the count, title and progress
     bar all kept updating, so the page looked healthy with an empty white square.

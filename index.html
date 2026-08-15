@@ -542,12 +542,15 @@ function meBody(you, s, c) {
   const head = `<div class="you-name">${esc(you.name)}</div>`;
 
   if (!you.checked_in) {
+    /* Falls back rather than printing the word "undefined" at somebody. That is
+       what happened when 'all' was added as a mode and this lookup was not. */
     const how = ({
+      all: 'Tap this at the pitch. Your phone confirms you are here. If it cannot get a location, scan the code on the screen first.',
       gps: 'Tap this at the pitch. Your phone confirms you are here.',
       qr: 'Scan the code on the pitch display, then tap this.',
       nfc: 'Tap your phone on the pitch tag, then tap this.',
       none: 'Tap this when you get to the pitch.'
-    })[c.verification_mode];
+    })[c.verification_mode] || 'Tap this when you get to the pitch.';
     return warn + head + `
       <p class="hint">${how}</p>
       <div style="margin-top:13px"></div>
