@@ -468,8 +468,13 @@ function render() {
       <span class="t">${q.time}</span>
     </li>`).join(''));
 
+  /* Every draw is listed, not just the latest. If the coordinator has redrawn
+     three times this morning, three rows say so, and each carries the seed and
+     nonce needed to recompute it. That visibility is the check on the redraw. */
+  const redraws = state.formations.filter(f => f.kind === 'redraw').length;
   setHTML(el('seeds'), off ? '' : (state.formations.length
-    ? state.formations.map(f => `<div class="seed"><b>${f.kind}</b> ${f.formed} · seed ${f.seed_hex}</div>`).join('')
+    ? (redraws ? `<div class="seed"><b>${redraws} redraw${redraws > 1 ? 's' : ''} today</b></div>` : '')
+      + state.formations.map(f => `<div class="seed"><b>${esc(f.kind)}</b> ${esc(f.formed)} · ${esc(f.rule)} · seed ${esc(f.seed_hex)}${f.nonce ? ' · nonce ' + esc(f.nonce) : ''}</div>`).join('')
     : '<div>No draw yet</div>'));
 }
 
@@ -612,4 +617,3 @@ refresh();
 </script>
 </body>
 </html>
-

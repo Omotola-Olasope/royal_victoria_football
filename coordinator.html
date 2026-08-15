@@ -36,11 +36,15 @@ body{
 .btn:active{transform:translate(4px,4px);box-shadow:0 0 0}
 .btn:focus-visible{outline:3px solid var(--stamp);outline-offset:3px}
 .btn[disabled]{opacity:.45}
+.btn.danger{background:var(--stamp);border-color:var(--stamp)}
 .row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--rule)}
 .row:last-child{border-bottom:0}
 .who{font-size:17px;font-weight:600}
+.who .sl{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--ink-soft);margin-right:9px}
 .tap{font-family:'Archivo Black',sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:11px 14px;min-height:44px;background:var(--ink);color:var(--stub);border:1.5px solid var(--ink);cursor:pointer}
 .tap:active{transform:translate(2px,2px)}
+.tap.ghost{background:transparent;color:var(--ink)}
+.tap.warn{background:var(--stamp);border-color:var(--stamp);color:var(--stub)}
 .done{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--stamp-ok);text-align:right;line-height:1.3}
 .done b{display:block;font-weight:700}
 .flash{border:1.5px solid var(--stamp);background:rgba(158,43,33,.09);color:var(--stamp);padding:11px 13px;font-size:15px;font-weight:600;margin-bottom:12px;line-height:1.35}
@@ -48,15 +52,30 @@ body{
 .hint{font-size:14.5px;color:var(--ink-soft);line-height:1.35;margin-top:10px}
 .empty{font-size:15px;color:var(--ink-soft);padding:6px 0}
 .hidden{display:none}
-.count{font-family:'Space Mono',monospace;font-size:26px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.chip{font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:15px;letter-spacing:.03em;padding:11px 13px;min-height:44px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;text-transform:uppercase}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--stub)}
+.chip[disabled]{opacity:.4;cursor:default}
+.lbl{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:2px 0 8px}
+.setblock{border:1px solid var(--rule);padding:9px 11px;margin-bottom:10px;background:var(--stub-2)}
+.setblock h3{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:.09em;text-transform:uppercase;margin-bottom:5px}
+.setblock h3 em{font-style:normal;font-weight:400;font-family:'Space Mono',monospace;font-size:11px;color:var(--ink-soft)}
+.seed{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--ink-soft);line-height:1.55;word-break:break-all;padding:4px 0;border-bottom:1px solid var(--rule)}
+.seed:last-child{border-bottom:0}
+.seed b{color:var(--ink);text-transform:uppercase;letter-spacing:.08em}
+.testbar{border:1.5px solid var(--stamp);background:var(--stamp);color:var(--stub);padding:11px 14px;margin-bottom:14px;box-shadow:4px 4px 0 var(--shadow)}
+.testbar b{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:.08em;text-transform:uppercase;display:block}
+.testbar span{font-family:'Space Mono',monospace;font-size:12px}
 </style>
 </head>
 <body>
 <main class="docket">
 
+  <div id="testbar"></div>
+
   <header class="mast">
     <div class="eyebrow"><span>Coordinator only</span><span id="date">—</span></div>
-    <h1 class="title">Record a player</h1>
+    <h1 class="title">Match control</h1>
   </header>
 
   <div class="tear"></div>
@@ -70,22 +89,76 @@ body{
   </section>
 
   <section class="stub hidden" id="addCard">
-    <div class="stub-head"><span>Anybody not on the list</span><span id="cnt">0 in</span></div>
+    <div class="stub-head"><span>Record an arrival</span><span id="cnt">0 in</span></div>
     <div id="msg"></div>
     <input class="field" id="nameInput" placeholder="Name" autocomplete="off" enterkeyhint="done">
     <button class="btn" id="btnAdd">Record arrival now</button>
-    <p class="hint">Use this for a man with no phone, a dead battery, somebody not in the group, or anyone who has just walked over. It stamps the time you tap it.</p>
+    <p class="hint">For a man with no phone, a dead battery, somebody not in the group, or anyone who has just walked over. It stamps the time you tap it.</p>
+  </section>
+
+  <section class="stub hidden" id="drawCard">
+    <div class="stub-head"><span>Draw again</span><span id="drawMeta"></span></div>
+    <div id="drawMsg"></div>
+
+    <p class="lbl">Rule</p>
+    <div class="chips" id="ruleChips"></div>
+    <p class="hint" id="ruleHint"></p>
+
+    <p class="lbl" style="margin-top:14px">Let in anyone who arrived up to</p>
+    <div class="chips" id="winChips"></div>
+
+    <button class="btn" id="btnRedraw">Clear the sets and draw again</button>
+    <p class="hint">Every man still here goes back in the hat. Anyone who has gone home or been taken off stays out. The old sets are kept in the sheet, not deleted, and each draw is listed below with its own seed so the group can check any of them.</p>
+  </section>
+
+  <section class="stub hidden" id="setsCard">
+    <div class="stub-head"><span>On the pitch</span><span id="setsCount"></span></div>
+    <div id="setsWarn"></div>
+    <div id="sets"></div>
+  </section>
+
+  <section class="stub hidden" id="queueCard">
+    <div class="stub-head"><span>Waiting</span><span id="queueCount"></span></div>
+    <div id="queue"></div>
   </section>
 
   <section class="stub hidden" id="rosterCard">
-    <div class="stub-head"><span>Already registered</span><span>tap to record</span></div>
+    <div class="stub-head"><span>Everybody registered</span><span>tap to record</span></div>
     <div id="roster"></div>
+  </section>
+
+  <section class="stub hidden" id="drawsCard">
+    <div class="stub-head"><span>Draws today</span><span id="drawsCount"></span></div>
+    <div id="draws"></div>
+  </section>
+
+  <section class="stub hidden" id="dangerCard">
+    <div class="stub-head"><span>Clear the whole day</span><span>careful</span></div>
+    <div id="dangerMsg"></div>
+    <p class="hint" style="margin:0 0 11px">Deletes every arrival, set and draw recorded today. There is no undo. Type CLEAR to arm it.</p>
+    <input class="field" id="clearInput" placeholder="Type CLEAR" autocomplete="off">
+    <button class="btn danger" id="btnClear" disabled>Clear today</button>
   </section>
 </main>
 
 <script>
 /* Same Apps Script /exec URL as index.html. */
 const API_URL = 'https://script.google.com/macros/s/AKfycbzA-ckrDg5ovx7czN9EPnfouqXSzy7VhgKX4YEZy4KU8mZA55G43hrHuj7a6WnTOWfu/exec';
+
+const RULE_TEXT = {
+  spread: 'Bands kept, so the first arrivals still fill the sets that start. Inside a band, men who arrive one after another are dealt into different sets, so a car full of mates cannot land together.',
+  banded: 'The original. The first arrivals fill the sets that start, then each band of arrivals is shuffled whole. Fairest on arrival time, weakest at breaking up groups who travel together.',
+  open:   'The first arrivals of the morning are guaranteed a start and everybody else is randomised across every set. Best mixing, but a man who came at nine can end up in the last set.'
+};
+const WINDOWS = [
+  { v: '0',   label: 'Cutoff' },
+  { v: '5',   label: '5 min' },
+  { v: '10',  label: '10 min' },
+  { v: '15',  label: '15 min' },
+  { v: '30',  label: '30 min' },
+  { v: '45',  label: '45 min' },
+  { v: 'all', label: 'Everyone' }
+];
 
 const store = (() => {
   const mem = {}; let ok = true;
@@ -98,6 +171,10 @@ const store = (() => {
 
 let key = store.get('sets.key') || '';
 let busy = false, draft = '';
+/* Held here rather than read back off the DOM, so a background refresh cannot
+   quietly reset a choice halfway through making it. */
+let ui = { rule: null, window: '10' };
+let data = null;
 
 async function admin(op, extra) {
   if (API_URL.indexOf('PASTE_') === 0) throw new Error('API_URL is not set in coordinator.html');
@@ -107,15 +184,23 @@ async function admin(op, extra) {
     body: JSON.stringify(Object.assign({ action: 'admin', admin_key: key, op }, extra || {})),
     redirect: 'follow'
   });
-  const data = await res.json();
-  if (data.ok === false) throw new Error(data.error || 'Request failed');
-  return data;
+  const d = await res.json();
+  if (d.ok === false) throw new Error(d.error || 'Request failed');
+  return d;
 }
 
 function el(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function setHTML(node, html){ if (node.__last !== html) { node.__last = html; node.innerHTML = html; } }
 function note(id, text, good){ el(id).innerHTML = text ? `<div class="flash ${good?'good':''}">${esc(text)}</div>` : ''; }
+function letter(n){ return String.fromCharCode(64 + n); }
+
+/* A roster reply missing these is not a roster. Apps Script sometimes answers a
+   redirected poll with its plain health response, and treating that as data is
+   what once put a raw error on screen. */
+function looksLikeRoster(d){
+  return !!(d && Array.isArray(d.players) && Array.isArray(d.sets) && d.session_date);
+}
 
 async function unlock() {
   key = (el('keyInput').value || '').trim();
@@ -125,64 +210,154 @@ async function unlock() {
     await load();
     store.set('sets.key', key);
     el('gate').classList.add('hidden');
-    el('addCard').classList.remove('hidden');
-    el('rosterCard').classList.remove('hidden');
+    ['addCard','drawCard','rosterCard','dangerCard'].forEach(id => el(id).classList.remove('hidden'));
   } catch (e) {
     note('gateMsg', e.message);
   } finally { busy = false; el('btnKey').disabled = false; }
 }
 
 async function load() {
-  const data = await admin('roster');
-  el('date').textContent = data.session_date;
-  el('cnt').textContent = data.checked_in + ' in';
-  if (!data.is_session_day) {
-    setHTML(el('roster'), '<p class="empty">No session today. Recording is closed.</p>');
-    return data;
-  }
-  setHTML(el('roster'), data.players.length
-    ? data.players.map(p => p.checked_in
-        ? `<div class="row"><span class="who">${esc(p.name)}</span>
-             <span class="done"><b>${p.time}</b>${p.method === 'coordinator' ? 'by you' : 'self'}</span></div>`
-        : `<div class="row"><span class="who">${esc(p.name)}</span>
-             <button class="tap" data-name="${esc(p.name)}">Record</button></div>`).join('')
-    : '<p class="empty">Nobody has registered yet.</p>');
-  return data;
+  const d = await admin('roster');
+  if (!looksLikeRoster(d)) throw new Error('The pitch sent back something unexpected.');
+  data = d;
+  if (ui.rule === null) ui.rule = d.rule;      /* server decides once, then the tap does */
+  render();
+  return d;
 }
 
-async function record(name) {
+function render(){
+  if (!data) return;
+  const d = data;
+
+  setHTML(el('testbar'), d.sandbox && d.sandbox.active
+    ? `<div class="testbar"><b>Test mode</b><span>Rehearsal day ${esc(d.sandbox.key)}. Real match data is hidden and safe. Ends ${esc(d.sandbox.expires)}, or run testEnd() in the editor.</span></div>`
+    : '');
+
+  el('date').textContent = d.session_date;
+  el('cnt').textContent = d.checked_in + ' in';
+  el('drawMeta').textContent = d.set_size + ' a side · ' + d.sets_on_pitch + ' on';
+
+  if (!d.is_session_day) {
+    setHTML(el('roster'), '<p class="empty">No session today. Recording is closed.</p>');
+    ['drawCard','setsCard','queueCard','drawsCard'].forEach(id => el(id).classList.add('hidden'));
+    return;
+  }
+  el('drawCard').classList.remove('hidden');
+
+  setHTML(el('ruleChips'), (d.rules||[]).map(r =>
+    `<button class="chip" data-rule="${esc(r)}" aria-pressed="${r===ui.rule}">${esc(r)}</button>`).join(''));
+  el('ruleHint').textContent = RULE_TEXT[ui.rule] || '';
+
+  setHTML(el('winChips'), WINDOWS.map(w =>
+    `<button class="chip" data-win="${w.v}" aria-pressed="${w.v===ui.window}">${w.label}</button>`).join(''));
+
+  /* Sets, each man with a way to take him off. */
+  el('setsCard').classList.toggle('hidden', !d.sets.length);
+  el('setsCount').textContent = d.sets.length + ' sets';
+  const unmixed = d.unmixed || [];
+  setHTML(el('setsWarn'), unmixed.length
+    ? `<div class="flash">Set ${unmixed.map(letter).join(' and ')} could not be mixed. Turnout left ${unmixed.length > 1 ? 'those sets' : 'that set'} as the only one in ${unmixed.length > 1 ? 'their' : 'its'} band, so those men arrived one after another and will play together whichever rule you pick. Only a different turnout, or ${d.rule === 'open' ? 'another rule' : 'switching to open'}, changes it.</div>`
+    : '');
+  setHTML(el('sets'), d.sets.map(s => `
+    <div class="setblock">
+      <h3>Set ${letter(s.set_no)} <em>${s.set_no <= d.sets_on_pitch ? 'on now' : 'comes on ' + (s.set_no - d.sets_on_pitch)}</em></h3>
+      ${s.players.map(p => `
+        <div class="row">
+          <span class="who"><span class="sl">${String(p.slot).padStart(2,'0')}</span>${esc(p.name)}</span>
+          <button class="tap ghost" data-off="${esc(p.name)}">Take off</button>
+        </div>`).join('')}
+    </div>`).join(''));
+
+  el('queueCard').classList.toggle('hidden', !d.queue.length);
+  el('queueCount').textContent = d.queue.length + ' waiting';
+  setHTML(el('queue'), d.queue.map(q => `
+    <div class="row">
+      <span class="who"><span class="sl">${String(q.pos).padStart(2,'0')}</span>${esc(q.name)}${q.late ? ' <em style="font-style:normal;color:var(--stamp);font-size:13px">late</em>' : ''}</span>
+      <span class="done"><b>${esc(q.time)}</b></span>
+    </div>`).join(''));
+
+  setHTML(el('roster'), d.players.length
+    ? d.players.map(p => {
+        if (!p.checked_in) return `<div class="row"><span class="who">${esc(p.name)}</span>
+             <button class="tap" data-name="${esc(p.name)}">Record</button></div>`;
+        return `<div class="row"><span class="who">${esc(p.name)}</span>
+             <span style="display:flex;gap:8px;align-items:center">
+               <span class="done"><b>${esc(p.time)}</b>${p.method === 'coordinator' ? 'by you' : 'self'}</span>
+               <button class="tap warn" data-remove="${esc(p.name)}">Remove</button>
+             </span></div>`;
+      }).join('')
+    : '<p class="empty">Nobody has registered yet.</p>');
+
+  el('drawsCard').classList.toggle('hidden', !d.draws.length);
+  el('drawsCount').textContent = d.draws.length + (d.draws.length === 1 ? ' draw' : ' draws');
+  setHTML(el('draws'), d.draws.map(f => `
+    <div class="seed"><b>${esc(f.kind)}</b> ${esc(f.formed)} · ${esc(f.rule)}${f.late_window_min && f.late_window_min !== '0' ? ' · +' + esc(f.late_window_min) : ''}<br>
+      seed ${esc(f.seed_hex)}${f.nonce ? ' · nonce ' + esc(f.nonce) : ''}</div>`).join(''));
+}
+
+async function act(fn, msgId){
   if (busy) return;
-  busy = true; note('msg','');
+  busy = true; note(msgId,'');
   try {
-    const data = await admin('checkin_for', { name });
-    note('msg', data.message, true);
-    draft = ''; el('nameInput').value = '';
+    const r = await fn();
+    if (r && r.message) note(msgId, r.message, true);
     await load();
   } catch (e) {
-    note('msg', e.message);
+    note(msgId, e.message);
   } finally { busy = false; }
+}
+
+const record  = name => act(() => admin('checkin_for', { name }).then(r => { draft=''; el('nameInput').value=''; return r; }), 'msg');
+const markOff = name => confirm('Take ' + name + ' off? His slot goes to the man at the front of the queue.')
+  && act(() => admin('mark_off', { name }), 'msg');
+const removeIn = name => confirm('Remove ' + name + " from today's arrivals?")
+  && act(() => admin('remove_checkin', { name }), 'msg');
+
+function redraw(){
+  const w = WINDOWS.filter(x => x.v === ui.window)[0];
+  if (!confirm('Clear every set and draw again using the ' + ui.rule + ' rule, letting in anyone who arrived up to ' + w.label.toLowerCase() + ' after the cutoff?')) return;
+  act(() => admin('redraw', { rule: ui.rule, late_window_min: ui.window }), 'drawMsg');
 }
 
 document.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b) return;
-  if (b.id === 'btnKey') unlock();
+  if (b.id === 'btnKey') return unlock();
   if (b.id === 'btnAdd') {
     const n = (el('nameInput').value || draft || '').trim();
-    if (n.length < 2) return note('msg','Enter a name.');
-    record(n);
+    return n.length < 2 ? note('msg','Enter a name.') : record(n);
   }
-  if (b.dataset && b.dataset.name) record(b.dataset.name);
+  if (b.id === 'btnRedraw') return redraw();
+  if (b.id === 'btnClear') {
+    if ((el('clearInput').value || '').trim().toUpperCase() !== 'CLEAR') return;
+    if (!confirm('Delete every arrival, set and draw recorded today? There is no undo.')) return;
+    el('clearInput').value = ''; el('btnClear').disabled = true;
+    return act(() => admin('reset_session'), 'dangerMsg');
+  }
+  if (b.dataset.rule)   { ui.rule = b.dataset.rule; return render(); }
+  if (b.dataset.win)    { ui.window = b.dataset.win; return render(); }
+  if (b.dataset.off)    return markOff(b.dataset.off);
+  if (b.dataset.remove) return removeIn(b.dataset.remove);
+  if (b.dataset.name)   return record(b.dataset.name);
 });
-document.addEventListener('input', e => { if (e.target.id === 'nameInput') draft = e.target.value; });
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'nameInput') draft = e.target.value;
+  if (e.target.id === 'clearInput') {
+    el('btnClear').disabled = (e.target.value || '').trim().toUpperCase() !== 'CLEAR';
+  }
+});
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  if (e.target.id === 'keyInput') { e.preventDefault(); unlock(); }
+  if (e.target.id === 'keyInput')  { e.preventDefault(); unlock(); }
   if (e.target.id === 'nameInput') { e.preventDefault(); el('btnAdd').click(); }
 });
+
+/* Background refresh stays silent and never redraws over something being typed. */
 setInterval(() => {
   if (document.hidden || busy || !key) return;
-  if (document.activeElement && document.activeElement.id === 'nameInput') return;
+  const a = document.activeElement;
+  if (a && (a.id === 'nameInput' || a.id === 'clearInput')) return;
   load().catch(() => {});
 }, 12000);
 

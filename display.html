@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  html,body{margin:0;height:100%;background:#131C24;color:#EEEFE8;
+    font-family:'Archivo Narrow','Helvetica Neue',sans-serif;
+    display:flex;align-items:center;justify-content:center;text-align:center}
+  .wrap{padding:24px}
+  h1{font-size:15px;letter-spacing:.22em;text-transform:uppercase;margin:0 0 18px;opacity:.65;font-weight:600}
+  #qr{background:#fff;padding:16px;display:inline-block;line-height:0;border-radius:4px}
+  .bar{height:6px;background:#2A3742;margin:20px auto 8px;max-width:280px;overflow:hidden}
+  .bar i{display:block;height:100%;background:#9E2B21;width:100%;transition:width 1s linear}
+  .meta{font-family:'Courier New',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.6}
+  .code{font-family:'Courier New',monospace;font-size:22px;letter-spacing:.3em;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Scan to check in</h1>
+  <div id="qr"></div>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="meta" id="meta">loading</div>
+  <div class="code" id="code"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+/* Set this to wherever index.html is hosted. */
+var FRONTEND_URL = 'https://omotola-olasope.github.io/royal_victoria_football/';
+var expires = 0;
+
+function draw(token) {
+  var url = FRONTEND_URL + (FRONTEND_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + token;
+  document.getElementById('qr').innerHTML = '';
+  QRCode.toCanvas(url, { width: 268, margin: 0 }, function (err, canvas) {
+    if (!err) document.getElementById('qr').appendChild(canvas);
+  });
+  document.getElementById('code').textContent = token;
+}
+
+function pull() {
+  google.script.run.withSuccessHandler(function (res) {
+    expires = res.expires_in;
+    draw(res.token);
+    document.getElementById('meta').textContent = 'code changes every ' + res.window_seconds + 's';
+  }).withFailureHandler(function (e) {
+    document.getElementById('meta').textContent = 'connection lost, retrying';
+  }).getQrTokenForDisplay();
+}
+
+setInterval(function () {
+  expires--;
+  document.getElementById('bar').style.width = Math.max(0, expires * 8) + '%';
+  if (expires <= 0) pull();
+}, 1000);
+
+pull();
+</script>
+</body>
+</html>
